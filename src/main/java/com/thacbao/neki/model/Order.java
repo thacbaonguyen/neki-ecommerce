@@ -1,0 +1,64 @@
+package com.thacbao.neki.model;
+
+import com.thacbao.neki.model.base.AuditableEntity;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.util.HashSet;
+import java.util.Set;
+
+@Entity
+@Table(name = "orders")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Order extends AuditableEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(name = "order_number", nullable = false, unique = true, length = 50)
+    private String orderNumber;
+
+    @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal totalAmount;
+
+    @Builder.Default
+    @Column(name = "shipping_fee", precision = 10, scale = 2)
+    private BigDecimal shippingFee = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "discount_amount", precision = 10, scale = 2)
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
+    @Column(name = "final_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal finalAmount;
+
+    @Column(nullable = false)
+    private String district;
+
+    @Column(nullable = false)
+    private String ward;
+
+    @Column(name = "address_detail", nullable = false)
+    private String addressDetail;
+
+    @Column(columnDefinition = "TEXT")
+    private String note;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<OrderItem> orderItems = new HashSet<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    private Set<Payment> payments = new HashSet<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    private Set<Review> reviews = new HashSet<>();
+}
