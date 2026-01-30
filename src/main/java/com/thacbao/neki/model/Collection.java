@@ -30,6 +30,15 @@ public class Collection extends BaseEntity {
     private Boolean isActive = true;
 
     @Builder.Default
+    @ManyToMany
+    @JoinTable(
+            name = "collection_subcategories",
+            joinColumns = @JoinColumn(name = "collection_id"),
+            inverseJoinColumns = @JoinColumn(name = "sub_category_id")
+    )
+    private Set<SubCategory> subCategories = new HashSet<>();
+
+    @Builder.Default
     @ManyToMany(mappedBy = "collections")
     private Set<Product> products = new HashSet<>();
 }

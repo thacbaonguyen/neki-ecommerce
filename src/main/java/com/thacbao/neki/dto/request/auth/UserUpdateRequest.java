@@ -1,4 +1,4 @@
-package com.thacbao.neki.dto.request;
+package com.thacbao.neki.dto.request.auth;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

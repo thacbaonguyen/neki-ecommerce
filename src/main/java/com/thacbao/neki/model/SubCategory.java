@@ -20,6 +20,14 @@ public class SubCategory extends BaseEntity {
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private SubCategory parent;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
+    private Set<SubCategory> children = new HashSet<>();
+
     @Column(nullable = false, length = 100)
     private String name;
 
@@ -28,6 +36,13 @@ public class SubCategory extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Builder.Default
+    @Column(name = "level")
+    private Integer level = 1;
 
     @Builder.Default
     @Column(name = "display_order")
@@ -40,4 +55,16 @@ public class SubCategory extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "subCategory", cascade = CascadeType.ALL)
     private Set<Product> products = new HashSet<>();
+
+    @Builder.Default
+    @ManyToMany(mappedBy = "subCategories")
+    private Set<Collection> collections = new HashSet<>();
+
+    public boolean isLeaf() {
+        return children == null || children.isEmpty();
+    }
+
+    public boolean isRoot() {
+        return parent == null;
+    }
 }

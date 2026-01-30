@@ -1,5 +1,6 @@
-package com.thacbao.neki.dto.request;
+package com.thacbao.neki.dto.request.auth;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,10 +11,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserLoginRequest {
-    @NotBlank(message = "Email không được để trống")
-    private String email;
+public class ForgotPasswordRequest {
 
-    @NotBlank(message = "Mật khẩu không được để trống")
-    private String password;
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không hợp lệ")
+    private String email;
 }

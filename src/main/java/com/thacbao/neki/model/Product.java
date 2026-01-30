@@ -57,6 +57,36 @@ public class Product extends AuditableEntity {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
+    // SEO fields
+    @Column(name = "meta_title", length = 255)
+    private String metaTitle;
+
+    @Column(name = "meta_description", length = 500)
+    private String metaDescription;
+
+    @Column(name = "meta_keywords", length = 500)
+    private String metaKeywords;
+
+    // Average rating (denormalized for performance)
+    @Builder.Default
+    @Column(name = "average_rating", precision = 3, scale = 2)
+    private BigDecimal averageRating = BigDecimal.ZERO;
+
+    // Total reviews count (denormalized)
+    @Builder.Default
+    @Column(name = "review_count")
+    private Integer reviewCount = 0;
+
+    // Total sold (denormalized)
+    @Builder.Default
+    @Column(name = "total_sold")
+    private Integer totalSold = 0;
+
+    // View count for popularity
+    @Builder.Default
+    @Column(name = "view_count")
+    private Long viewCount = 0L;
+
     @Builder.Default
     @ManyToMany
     @JoinTable(
@@ -91,6 +121,22 @@ public class Product extends AuditableEntity {
     @ManyToMany(mappedBy = "products")
     private Set<Wishlist> wishlists = new HashSet<>();
 
+    public BigDecimal getCurrentPrice() {
+        return salePrice != null && salePrice.compareTo(BigDecimal.ZERO) > 0
+                ? salePrice : basePrice;
+    }
+
+    public boolean isOnSale() {
+        return salePrice != null && salePrice.compareTo(BigDecimal.ZERO) > 0
+                && salePrice.compareTo(basePrice) < 0;
+    }
+
+    public BigDecimal getDiscountPercentage() {
+        if (!isOnSale()) return BigDecimal.ZERO;
+        return basePrice.subtract(salePrice)
+                .divide(basePrice, 2, BigDecimal.ROUND_HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+    }
 
     public enum Gender {
         MEN("Men"),

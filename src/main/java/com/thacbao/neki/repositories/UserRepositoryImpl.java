@@ -98,7 +98,8 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
                 .limit(pageable.getPageSize()).fetch();
 
         long total = queryFactory.select(user.count()).from(user)
-                .where(role.name.eq(roleName) ,user.isActive.isFalse()).fetchOne();
+                .join(user.roles, role)
+                .where(role.name.eq(roleName) ,user.isActive.isTrue()).fetchOne();
 
         return new PageImpl<>(content, pageable, total);
 

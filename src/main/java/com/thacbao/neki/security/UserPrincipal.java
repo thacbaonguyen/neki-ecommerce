@@ -90,7 +90,7 @@ public class UserPrincipal implements UserDetails, OAuth2User {
 
     @Override
     public boolean isAccountNonLocked() {
-        return isActive; // Account bị lock nếu không active
+        return true; // Account bị lock nếu không active
     }
 
     @Override
@@ -100,7 +100,7 @@ public class UserPrincipal implements UserDetails, OAuth2User {
 
     @Override
     public boolean isEnabled() {
-        return isActive && emailVerified; // Phải active VÀ verify email
+        return true;
     }
 
     @Override

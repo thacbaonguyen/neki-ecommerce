@@ -4,6 +4,7 @@ import com.thacbao.neki.model.base.AuditableEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -30,6 +31,9 @@ public class User extends AuditableEntity {
 
     @Column(length = 19)
     private String otp;
+
+    @Column(name = "otp_generate_time")
+    private LocalDateTime otpGenerateTime;
 
     @Builder.Default
     @Column(name = "is_active")

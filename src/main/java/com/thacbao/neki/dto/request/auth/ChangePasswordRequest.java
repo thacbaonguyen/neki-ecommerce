@@ -1,4 +1,4 @@
-package com.thacbao.neki.dto.request;
+package com.thacbao.neki.dto.request.auth;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

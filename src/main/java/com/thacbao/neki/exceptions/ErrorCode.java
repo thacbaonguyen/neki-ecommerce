@@ -10,6 +10,7 @@ public enum ErrorCode {
     ALREADY_EXISTS(409, "Resource already exists", HttpStatus.CONFLICT),
     INVALID_INPUT(400, "Invalid input", HttpStatus.BAD_REQUEST),
     UNCATEGORIZED(500, "Uncategorized error", HttpStatus.INTERNAL_SERVER_ERROR),
+    OTP_EXPIRED(400, "OTP expired", HttpStatus.BAD_REQUEST),
 
     // User errors
     USER_NOT_FOUND(404, "User not found", HttpStatus.NOT_FOUND),
