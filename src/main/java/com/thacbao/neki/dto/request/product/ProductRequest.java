@@ -17,7 +17,7 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-class ProductRequest {
+public class ProductRequest {
     @NotNull(message = "SubCategory ID không được để trống")
     private Integer subCategoryId;
 

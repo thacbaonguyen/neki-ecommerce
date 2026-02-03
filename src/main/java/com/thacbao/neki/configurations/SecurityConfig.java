@@ -3,6 +3,7 @@ package com.thacbao.neki.configurations;
 import com.thacbao.neki.security.handler.OAuth2AuthenticationFailureHandler;
 import com.thacbao.neki.security.handler.OAuth2AuthenticationSuccessHandler;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,6 +29,8 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+    private final RateLimitIPtFilter rateLimitIPtFilter;
+    private final RateLimitUserFilter rateLimitUserFilter;
 
     private static final String[] PUBLIC_MATCHERS = {
             "/api/v1/auth/login",
@@ -38,6 +41,21 @@ public class SecurityConfig {
             "/api/v1/auth/test",
             "/api/v1/auth/set-password/**",
             "/api/v1/auth/verify-forgot-password",
+            "/api/v1/auth/refresh-token",
+            "/oauth2/**",
+            // Swagger
+            "/swagger-ui.html",
+            "/swagger-ui/**",
+            "/v3/api-docs/**",
+            // public prod & cate  endpoints
+            "/api/v1/categories/**",
+            "/api/v1/products/**",
+            "/api/v1/search/**",
+            "/api/v1/catalog/**"
+    };
+
+    private static final String[] ADMIN_MATCHERS = {
+            "/api/v1/admin/**"
     };
 
     @Bean
@@ -47,6 +65,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_MATCHERS).permitAll()
                         .requestMatchers("/oauth2/**").permitAll()
+                        .requestMatchers(ADMIN_MATCHERS).hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(authorization -> authorization
@@ -62,7 +81,9 @@ public class SecurityConfig {
                         .failureHandler(oAuth2AuthenticationFailureHandler)
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(rateLimitIPtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(rateLimitUserFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -83,5 +104,13 @@ public class SecurityConfig {
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtFilter> jwtFilterRegistration(JwtFilter jwtFilter) {
+        FilterRegistrationBean<JwtFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(jwtFilter);
+        registration.setEnabled(false);
+        return registration;
     }
 }

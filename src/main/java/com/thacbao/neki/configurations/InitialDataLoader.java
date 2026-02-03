@@ -2,8 +2,8 @@ package com.thacbao.neki.configurations;
 
 import com.thacbao.neki.model.Role;
 import com.thacbao.neki.model.User;
-import com.thacbao.neki.repositories.RoleRepository;
-import com.thacbao.neki.repositories.UserRepository;
+import com.thacbao.neki.repositories.jpa.RoleRepository;
+import com.thacbao.neki.repositories.jpa.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

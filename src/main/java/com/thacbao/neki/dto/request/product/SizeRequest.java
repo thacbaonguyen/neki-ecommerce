@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-class SizeRequest {
+public class SizeRequest {
     @NotBlank(message = "Tên size không được để trống")
     @Size(max = 20, message = "Tên size tối đa 20 ký tự")
     private String name;

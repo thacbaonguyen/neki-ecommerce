@@ -89,7 +89,6 @@ public class CloudinaryServiceImpl implements CloudinaryService {
             }
         } catch (IOException e) {
             log.error("Failed to delete image: {}", imageUrl, e);
-            // Don't throw exception for delete failures
         }
     }
 
@@ -104,6 +103,9 @@ public class CloudinaryServiceImpl implements CloudinaryService {
         }
     }
 
+    /**
+     * extract public id có dạng products/shoes/nike-air-force-1
+     * */
     @Override
     public String extractPublicId(String imageUrl) {
         if (imageUrl == null || !imageUrl.contains("cloudinary.com")) {
@@ -111,8 +113,7 @@ public class CloudinaryServiceImpl implements CloudinaryService {
         }
 
         try {
-            // URL format: https://res.cloudinary.com/{cloud_name}/image/upload/v{version}/{folder}/{filename}.{ext}
-            // Public ID: {folder}/{filename}
+            // URL format: .../image/upload/v1712345678/products/shoes/nike-air-force-1.jpg
 
             String[] parts = imageUrl.split("/upload/");
             if (parts.length < 2) {
@@ -120,11 +121,10 @@ public class CloudinaryServiceImpl implements CloudinaryService {
             }
 
             String path = parts[1];
-
-            // Remove version number (v1234567890)
+            // remove version vxxxxx
             path = path.replaceFirst("v\\d+/", "");
 
-            // Remove file extension
+            // remove đuôi file
             int lastDot = path.lastIndexOf('.');
             if (lastDot > 0) {
                 path = path.substring(0, lastDot);
@@ -133,30 +133,26 @@ public class CloudinaryServiceImpl implements CloudinaryService {
             return path;
 
         } catch (Exception e) {
-            log.error("Failed to extract public ID from URL: {}", imageUrl, e);
+            log.error("Failed to extract public id from url: {}", imageUrl, e);
             return null;
         }
     }
 
-    // Helper method to validate image file
     private void validateImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new InvalidException("File ảnh không được để trống");
         }
 
-        // Check file size (max 10MB)
         long maxSize = 10 * 1024 * 1024; // 10MB
         if (file.getSize() > maxSize) {
             throw new InvalidException("Kích thước file không được vượt quá 10MB");
         }
 
-        // Check file type
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new InvalidException("File phải là ảnh (jpg, png, webp, etc.)");
+            throw new InvalidException("File phải là ảnh");
         }
 
-        // Check allowed image types
         List<String> allowedTypes = List.of("image/jpeg", "image/png", "image/webp", "image/jpg");
         if (!allowedTypes.contains(contentType.toLowerCase())) {
             throw new InvalidException("Chỉ chấp nhận file ảnh định dạng: JPG, PNG, WEBP");

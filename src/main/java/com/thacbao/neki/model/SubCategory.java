@@ -37,9 +37,6 @@ public class SubCategory extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "image_url", length = 500)
-    private String imageUrl;
-
     @Builder.Default
     @Column(name = "level")
     private Integer level = 1;

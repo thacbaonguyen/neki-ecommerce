@@ -1,6 +1,6 @@
 package com.thacbao.neki.configurations;
 
-import com.thacbao.neki.repositories.UserRepository;
+import com.thacbao.neki.repositories.jpa.UserRepository;
 import com.thacbao.neki.model.User;
 import com.thacbao.neki.security.UserPrincipal;
 import jakarta.transaction.Transactional;

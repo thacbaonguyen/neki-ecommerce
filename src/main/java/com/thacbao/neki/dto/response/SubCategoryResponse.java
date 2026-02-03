@@ -41,7 +41,6 @@ public class SubCategoryResponse {
                 .name(subCategory.getName())
                 .slug(subCategory.getSlug())
                 .description(subCategory.getDescription())
-                .imageUrl(subCategory.getImageUrl())
                 .level(subCategory.getLevel())
                 .displayOrder(subCategory.getDisplayOrder())
                 .isActive(subCategory.getIsActive())

@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-class BrandRequest {
+public class BrandRequest {
     @NotBlank(message = "Tên thương hiệu không được để trống")
     @Size(max = 100, message = "Tên thương hiệu tối đa 100 ký tự")
     private String name;

@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
     // Common errors
     NOT_FOUND(404, "Resource not found", HttpStatus.NOT_FOUND),
+    PRODUCT_NOT_FOUND(404, "Không tìm thấy sản phẩm", HttpStatus.NOT_FOUND),
     ALREADY_EXISTS(409, "Resource already exists", HttpStatus.CONFLICT),
     INVALID_INPUT(400, "Invalid input", HttpStatus.BAD_REQUEST),
     UNCATEGORIZED(500, "Uncategorized error", HttpStatus.INTERNAL_SERVER_ERROR),

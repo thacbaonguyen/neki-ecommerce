@@ -6,7 +6,7 @@ import com.thacbao.neki.exceptions.common.AppException;
 import com.thacbao.neki.exceptions.common.NotFoundException;
 import com.thacbao.neki.model.Role;
 import com.thacbao.neki.model.User;
-import com.thacbao.neki.repositories.UserRepository;
+import com.thacbao.neki.repositories.jpa.UserRepository;
 import com.thacbao.neki.security.UserPrincipal;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,7 +21,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 

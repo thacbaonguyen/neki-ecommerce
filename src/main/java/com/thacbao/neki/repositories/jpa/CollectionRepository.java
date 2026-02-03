@@ -1,4 +1,4 @@
-package com.thacbao.neki.repositories;
+package com.thacbao.neki.repositories.jpa;
 
 import com.thacbao.neki.model.Collection;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,7 +14,7 @@ public interface CollectionRepository extends JpaRepository<Collection, Integer>
     Optional<Collection> findBySlug(String slug);
     boolean existsBySlug(String slug);
     boolean existsByName(String name);
-
+    List<Collection> findByIsActiveTrue();
     @Query("SELECT c FROM Collection c LEFT JOIN FETCH c.subCategories WHERE c.id = :id")
     Optional<Collection> findByIdWithSubCategories(@Param("id") Integer id);
 }

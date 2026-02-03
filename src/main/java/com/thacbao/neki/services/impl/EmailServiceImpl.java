@@ -309,7 +309,7 @@ public class EmailServiceImpl implements EmailService {
                 <body>
                     <div class="container">
                         <div class="header">
-                            <h1>🚫 Tài khoản đã bị khóa</h1>
+                            <h1>Tài khoản đã bị khóa</h1>
                         </div>
                         <div class="content">
                             <p>Xin chào <strong>%s</strong>,</p>

@@ -1,4 +1,4 @@
-package com.thacbao.neki.repositories;
+package com.thacbao.neki.repositories.jpa;
 
 import com.thacbao.neki.model.Inventory;
 import com.thacbao.neki.model.ProductVariant;

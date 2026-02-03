@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-class ProductVariantRequest {
+public class ProductVariantRequest {
     @NotNull(message = "Color ID không được để trống")
     private Integer colorId;
 
@@ -23,9 +23,9 @@ class ProductVariantRequest {
     @DecimalMin(value = "0.0", message = "Giá bổ sung phải >= 0")
     private BigDecimal additionalPrice;
 
-//    @NotNull(message = "Số lượng không được để trống")
-//    @Min(value = 0, message = "Số lượng phải >= 0")
-//    private Integer quantity;
+    @NotNull(message = "Số lượng không được để trống")
+    @Min(value = 0, message = "Số lượng phải >= 0")
+    private Integer quantity;
 
     private Boolean isActive;
 }

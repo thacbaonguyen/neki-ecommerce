@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-class ProductImageRequest {
+public class ProductImageRequest {
     @NotBlank(message = "URL ảnh không được để trống")
     private String imageUrl;
 

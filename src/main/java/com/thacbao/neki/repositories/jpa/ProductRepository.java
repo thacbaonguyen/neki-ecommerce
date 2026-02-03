@@ -1,9 +1,8 @@
-package com.thacbao.neki.repositories;
+package com.thacbao.neki.repositories.jpa;
 
 import com.thacbao.neki.model.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -23,21 +22,21 @@ public interface ProductRepository extends JpaRepository<Product, Integer>, Prod
 
     boolean existsByName(String name);
 
-    // Find products by category hierarchy
+    // find by list subcate ( click cate -> load all sub -> load all product)
     @Query("SELECT p FROM Product p WHERE p.subCategory.id IN :subCategoryIds AND p.isActive = true")
     Page<Product> findBySubCategoryIds(@Param("subCategoryIds") List<Integer> subCategoryIds, Pageable pageable);
 
-    // Find featured products
+    // features product
     Page<Product> findByIsFeaturedTrueAndIsActiveTrue(Pageable pageable);
 
-    // Find new products
+    // new product
     Page<Product> findByIsNewTrueAndIsActiveTrue(Pageable pageable);
 
-    // Find on sale products
+    // sale prodct
     @Query("SELECT p FROM Product p WHERE p.salePrice IS NOT NULL AND p.salePrice > 0 AND p.salePrice < p.basePrice AND p.isActive = true")
     Page<Product> findOnSaleProducts(Pageable pageable);
 
-    // Find by price range
+    // find range
     @Query("SELECT p FROM Product p WHERE (p.salePrice IS NULL OR p.salePrice = 0 OR p.salePrice >= :minPrice) " +
             "AND (CASE WHEN p.salePrice IS NOT NULL AND p.salePrice > 0 THEN p.salePrice ELSE p.basePrice END) <= :maxPrice " +
             "AND p.isActive = true")
@@ -45,19 +44,20 @@ public interface ProductRepository extends JpaRepository<Product, Integer>, Prod
                                    @Param("maxPrice") BigDecimal maxPrice,
                                    Pageable pageable);
 
+    // best seller prod
     @Query("SELECT p FROM Product p WHERE p.isActive = true ORDER BY p.totalSold DESC")
     Page<Product> findBestSellers(Pageable pageable);
 
-    // Find popular (by view count)
+    // popular product
     @Query("SELECT p FROM Product p WHERE p.isActive = true ORDER BY p.viewCount DESC")
     Page<Product> findPopularProducts(Pageable pageable);
 
-    // Increment view count
+    // increment view count
     @Modifying
     @Query("UPDATE Product p SET p.viewCount = p.viewCount + 1 WHERE p.id = :productId")
     void incrementViewCount(@Param("productId") Integer productId);
 
-    // Update average rating
+    // update rating
     @Modifying
     @Query("UPDATE Product p SET p.averageRating = :rating, p.reviewCount = :count WHERE p.id = :productId")
     void updateRating(@Param("productId") Integer productId,

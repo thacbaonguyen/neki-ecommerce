@@ -1,4 +1,4 @@
-package com.thacbao.neki.repositories;
+package com.thacbao.neki.repositories.jpa;
 
 import com.thacbao.neki.model.Category;
 import com.thacbao.neki.model.SubCategory;
@@ -21,22 +21,24 @@ public interface SubCategoryRepository extends JpaRepository<SubCategory, Intege
 
     List<SubCategory> findByCategoryAndIsActiveTrue(Category category);
 
-    // Find root subcategories (level 1)
+    // find root sub
     @Query("SELECT sc FROM SubCategory sc WHERE sc.category = :category AND sc.parent IS NULL AND sc.isActive = true ORDER BY sc.displayOrder")
     List<SubCategory> findRootSubCategoriesByCategory(@Param("category") Category category);
 
-    // Find children of a parent subcategory
+    // child
     @Query("SELECT sc FROM SubCategory sc WHERE sc.parent = :parent AND sc.isActive = true ORDER BY sc.displayOrder")
     List<SubCategory> findChildrenByParent(@Param("parent") SubCategory parent);
 
-    // Find all leaf subcategories (no children) for a category
+    // Find all leaf
     @Query("SELECT sc FROM SubCategory sc WHERE sc.category = :category AND sc.isActive = true AND NOT EXISTS (SELECT 1 FROM SubCategory child WHERE child.parent = sc)")
     List<SubCategory> findLeafSubCategoriesByCategory(@Param("category") Category category);
 
-    // Find subcategories by level
+    // fid subcategories by level
     List<SubCategory> findByCategoryAndLevel(Category category, Integer level);
 
-    // Get full hierarchy for a category
+    List<SubCategory> findByLevelAndIsActiveTrue(Integer level);
+
+    // get root subcate
     @Query("SELECT sc FROM SubCategory sc LEFT JOIN FETCH sc.children WHERE sc.category = :category AND sc.parent IS NULL AND sc.isActive = true ORDER BY sc.displayOrder")
     List<SubCategory> findHierarchyByCategory(@Param("category") Category category);
 }

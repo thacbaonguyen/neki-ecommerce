@@ -1,6 +1,5 @@
 package com.thacbao.neki.configurations;
 
-import com.thacbao.neki.security.UserPrincipal;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,7 +16,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -26,8 +24,6 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtUtils jwtUtils;
-    Claims claims = null;
-    String email = null;
     private static final String[] PUBLIC_PATHS = {
             "/api/v1/auth/login",
             "/api/v1/auth/signup",
@@ -50,76 +46,47 @@ public class JwtFilter extends OncePerRequestFilter {
         log.info(path);
         if (isPublicPath(request.getServletPath())){
             filterChain.doFilter(request, response);
+            return;
         }
-        else if (path.equals("/api/v1/auth/refresh-token")){
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                String username = jwtUtils.getUserNameFromTokenExpired(token);
-                if (username != null) {
-                    log.info("refresh token : {}", username);
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                    UsernamePasswordAuthenticationToken authentication = new
-                            UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                }
-            }
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
+            return;
         }
-        else{
-            String authorizationHeader = request.getHeader("Authorization");
-            String token = null;
-            if (authorizationHeader != null){
-                if(authorizationHeader.startsWith("Bearer ")){
-                    token = authorizationHeader.substring(7);
-                    try {
-                        claims = jwtUtils.getClaimsFromToken(token);
-                        email = jwtUtils.getUsernameFromToken(token);
-                    } catch (Exception e) {
-                        log.error("Invalid JWT token: {}", e.getMessage());
-                    }
-                }
-            }
-            if(claims != null && email != null && SecurityContextHolder.getContext().getAuthentication() == null){
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                if (userDetails instanceof UserPrincipal userPrincipal) {
-                    // Check if email is not verified
-                    if (!userPrincipal.getEmailVerified()) {
-                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                        response.setContentType("application/json");
-                        response.getWriter().write(
-                                "{\"message\":\"Please verify your email first\",\"status\":\"UNVERIFIED\"}"
-                        );
-                        return;
-                    }
-                }
-                if(jwtUtils.validateToken(token, userDetails)){
-                    UsernamePasswordAuthenticationToken authentication = new
-                            UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                }
-            }
+        String token = authHeader.substring(7);
+        String email;
+        try {
+            email = jwtUtils.getUsernameFromToken(token);
+        } catch (Exception e) {
+            log.warn("Invalid JWT token");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
             filterChain.doFilter(request, response);
+            return;
         }
-    }
+        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-    public Boolean isAdmin(){
-        if (claims == null) return false;
-        List<String> roles = claims.get("role", List.class);
-        return roles.contains("admin".toUpperCase());
-    }
+        if (!jwtUtils.validateToken(token, userDetails)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                );
 
-    public Boolean isUser(){
-        if (claims == null) return false;
-        List<String> roles = claims.get("role", List.class);
-        return roles.contains("user".toUpperCase());
-    }
+        authentication.setDetails(
+                new WebAuthenticationDetailsSource().buildDetails(request)
+        );
 
-    public String getCurrentUsername(){
-        return email;
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        filterChain.doFilter(request, response);
     }
 }

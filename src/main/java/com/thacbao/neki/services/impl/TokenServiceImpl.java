@@ -1,12 +1,11 @@
 package com.thacbao.neki.services.impl;
 
-import com.thacbao.neki.exceptions.ErrorCode;
 import com.thacbao.neki.exceptions.common.InvalidException;
 import com.thacbao.neki.exceptions.common.NotFoundException;
 import com.thacbao.neki.model.RefreshToken;
 import com.thacbao.neki.model.User;
-import com.thacbao.neki.repositories.RefreshTokenRepository;
-import com.thacbao.neki.repositories.UserRepository;
+import com.thacbao.neki.repositories.jpa.RefreshTokenRepository;
+import com.thacbao.neki.repositories.jpa.UserRepository;
 import com.thacbao.neki.services.TokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

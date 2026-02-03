@@ -1,13 +1,15 @@
-package com.thacbao.neki.repositories;
+package com.thacbao.neki.repositories.jpa;
 
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.thacbao.neki.dto.request.product.ProductFilterRequest;
 import com.thacbao.neki.model.*;
+import com.thacbao.neki.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -18,7 +20,6 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -41,93 +42,107 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
     public Page<Product> filterProducts(ProductFilterRequest filter, Pageable pageable) {
         BooleanBuilder builder = new BooleanBuilder();
 
-        // Base condition: only active products
-        builder.and(product.isActive.isTrue());
-
-        // Filter by category
+        boolean isAdmin = SecurityUtils.hasRole("ADMIN");
+        if (!isAdmin) {
+            builder.and(product.isActive.isTrue());
+        }
+        // filter by category
         if (filter.getCategoryId() != null) {
             builder.and(subCategory.category.id.eq(filter.getCategoryId()));
         }
 
-        // Filter by subcategory (including children)
+        // filter by sub cate
         if (filter.getSubCategoryId() != null) {
             builder.and(product.subCategory.id.eq(filter.getSubCategoryId())
                     .or(product.subCategory.parent.id.eq(filter.getSubCategoryId())));
         }
 
-        // Filter by brand
+        // brand
         if (filter.getBrandId() != null) {
             builder.and(product.brand.id.eq(filter.getBrandId()));
         }
 
-        // Filter by collection
+        // collection
         if (filter.getCollectionId() != null) {
             builder.and(product.collections.any().id.eq(filter.getCollectionId()));
         }
 
-        // Filter by topic
+        // topic
         if (filter.getTopicId() != null) {
             builder.and(product.topics.any().id.eq(filter.getTopicId()));
         }
 
-        // Filter by gender
+        // gender
         if (filter.getGender() != null) {
             builder.and(product.gender.eq(filter.getGender()));
         }
 
-        // Filter by price range
+        // price range
         if (filter.getMinPrice() != null || filter.getMaxPrice() != null) {
+            NumberExpression<BigDecimal> effectivePrice =
+                    Expressions.cases()
+                            .when(product.salePrice.isNotNull().and(product.salePrice.gt(BigDecimal.ZERO)))
+                            .then(product.salePrice)
+                            .otherwise(product.basePrice);
+
             if (filter.getMinPrice() != null) {
-                builder.and(
-                        product.salePrice.isNull()
-                                .or(product.salePrice.eq(BigDecimal.ZERO))
-                                .or(product.salePrice.goe(filter.getMinPrice()))
-                );
+                builder.and(effectivePrice.goe(filter.getMinPrice()));
             }
+
             if (filter.getMaxPrice() != null) {
-                builder.and(
-                        Expressions.cases()
-                                .when(product.salePrice.isNotNull().and(product.salePrice.gt(BigDecimal.ZERO)))
-                                .then(product.salePrice)
-                                .otherwise(product.basePrice)
-                                .loe(filter.getMaxPrice())
-                );
+                builder.and(effectivePrice.loe(filter.getMaxPrice()));
             }
+//            if (filter.getMinPrice() != null) {
+//                builder.and(
+//                        product.salePrice.isNull()
+//                                .or(product.salePrice.eq(BigDecimal.ZERO))
+//                                .or(product.salePrice.goe(filter.getMinPrice()))
+//                );
+//            }
+//            if (filter.getMaxPrice() != null) {
+//                builder.and(
+//                        Expressions.cases()
+//                                .when(product.salePrice.isNotNull().and(product.salePrice.gt(BigDecimal.ZERO)))
+//                                .then(product.salePrice)
+//                                .otherwise(product.basePrice)
+//                                .loe(filter.getMaxPrice())
+//                );
+//            }
         }
 
-        // Filter by colors
+        // colors
         if (filter.getColorIds() != null && !filter.getColorIds().isEmpty()) {
             builder.and(product.variants.any().color.id.in(filter.getColorIds()));
         }
 
-        // Filter by sizes
+        // sizes
         if (filter.getSizeIds() != null && !filter.getSizeIds().isEmpty()) {
             builder.and(product.variants.any().size.id.in(filter.getSizeIds()));
         }
 
-        // Filter by featured
+        // featured
         if (filter.getIsFeatured() != null && filter.getIsFeatured()) {
             builder.and(product.isFeatured.isTrue());
         }
 
-        // Filter by new
+        // new
         if (filter.getIsNew() != null && filter.getIsNew()) {
             builder.and(product.isNew.isTrue());
         }
 
-        // Filter by on sale
+        // sale
         if (filter.getIsOnSale() != null && filter.getIsOnSale()) {
             builder.and(product.salePrice.isNotNull())
                     .and(product.salePrice.gt(BigDecimal.ZERO))
                     .and(product.salePrice.lt(product.basePrice));
         }
 
-        // Filter by in stock
+        // stock
         if (filter.getInStock() != null && filter.getInStock()) {
             builder.and(product.variants.any().inventory.quantity.gt(0));
         }
 
-        // Build query
+        // build qr
         JPAQuery<Product> query = queryFactory
                 .selectDistinct(product)
                 .from(product)
@@ -136,10 +151,10 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 .leftJoin(product.brand, brand).fetchJoin()
                 .where(builder);
 
-        // Apply sorting
+        // sorting
         query.orderBy(getOrderSpecifiers(pageable.getSort()));
 
-        // Get total count
+        // total count
         long total = queryFactory
                 .selectDistinct(product)
                 .from(product)
@@ -147,7 +162,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 .where(builder)
                 .fetchCount();
 
-        // Get page content
+        // content
         List<Product> content = query
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
@@ -300,7 +315,6 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 .fetch();
     }
 
-    // Helper methods
     private OrderSpecifier<?>[] getOrderSpecifiers(Sort sort) {
         List<OrderSpecifier<?>> orders = new ArrayList<>();
 

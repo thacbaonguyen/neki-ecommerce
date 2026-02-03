@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-class TopicRequest {
+public class TopicRequest {
     @NotBlank(message = "Tên chủ đề không được để trống")
     @Size(max = 100, message = "Tên chủ đề tối đa 100 ký tự")
     private String name;

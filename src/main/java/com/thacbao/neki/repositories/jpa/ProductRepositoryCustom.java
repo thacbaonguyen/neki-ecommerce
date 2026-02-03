@@ -1,4 +1,4 @@
-package com.thacbao.neki.repositories;
+package com.thacbao.neki.repositories.jpa;
 
 import com.thacbao.neki.dto.request.product.ProductFilterRequest;
 import com.thacbao.neki.model.Product;

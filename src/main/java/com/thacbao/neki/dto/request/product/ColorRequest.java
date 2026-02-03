@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-class ColorRequest {
+public class ColorRequest {
     @NotBlank(message = "Tên màu không được để trống")
     @Size(max = 50, message = "Tên màu tối đa 50 ký tự")
     private String name;

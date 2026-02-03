@@ -46,7 +46,7 @@ public class CategoryResponse {
             response.setSubCategories(
                     category.getSubCategories().stream()
                             .filter(SubCategory::getIsActive)
-                            .filter(sc -> sc.getParent() == null) // Only root subcategories
+                            .filter(sc -> sc.getParent() == null)
                             .sorted(Comparator.comparing(SubCategory::getDisplayOrder))
                             .map(SubCategoryResponse::fromWithChildren)
                             .collect(Collectors.toList())

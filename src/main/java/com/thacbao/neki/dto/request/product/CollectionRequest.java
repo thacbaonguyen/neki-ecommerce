@@ -11,7 +11,7 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-class CollectionRequest {
+public class CollectionRequest {
     @NotBlank(message = "Tên bộ sưu tập không được để trống")
     @Size(max = 100, message = "Tên bộ sưu tập tối đa 100 ký tự")
     private String name;
