@@ -11,9 +11,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class WishListRequest {
-    @NotNull(message = "User không được để trống")
-    private Integer userId;
-
     @NotNull(message = "Product không được để trống")
     private Integer productId;
 }

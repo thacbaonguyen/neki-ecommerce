@@ -24,7 +24,7 @@ public class WishListResponse {
     private LocalDateTime createdAt;
     private List<ProductListResponse> product;
 
-    public WishListResponse from(Wishlist wishlist) {
+    public static WishListResponse from(Wishlist wishlist) {
         return WishListResponse.builder()
                 .id(wishlist.getId())
                 .user(UserResponseDTO.from(wishlist.getUser()))
@@ -33,7 +33,7 @@ public class WishListResponse {
                 .build();
     }
 
-    private List<ProductListResponse> toProductList(Set<Product> products) {
+    private static List<ProductListResponse> toProductList(Set<Product> products) {
         return products.stream().map(ProductListResponse::from).collect(Collectors.toList());
     }
 }

@@ -138,6 +138,7 @@ public class Product extends AuditableEntity {
                 .multiply(BigDecimal.valueOf(100));
     }
 
+
     public enum Gender {
         MEN("Men"),
         WOMEN("Women"),

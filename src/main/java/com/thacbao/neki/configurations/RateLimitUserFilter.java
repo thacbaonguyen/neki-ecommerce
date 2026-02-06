@@ -98,6 +98,10 @@ public class RateLimitUserFilter extends OncePerRequestFilter {
             return new RateLimitRule(30, Duration.ofMinutes(1), "profile-user:");
         }
 
+        if (path.startsWith("/api/v1/wishlist")) {
+            return new RateLimitRule(30, Duration.ofMinutes(1), "wishlist-user:");
+        }
+
         return null;
     }
 }
