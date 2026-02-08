@@ -11,6 +11,7 @@ import com.thacbao.neki.repositories.jpa.UserRepository;
 import com.thacbao.neki.repositories.jpa.WishListRepository;
 import com.thacbao.neki.security.SecurityUtils;
 import com.thacbao.neki.services.WishListService;
+import com.thacbao.neki.utils.MessageKey;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,9 +33,9 @@ public class WishListServiceImpl implements WishListService {
         log.info("addProductToWishList: {}", productId);
         Integer userId = SecurityUtils.getCurrentUserId();
         if (userId == null) {
-            throw new InvalidException("Nguoi dung chua dang nhap");
+            throw new InvalidException(MessageKey.USER_NOT_LOGIN);
         }
-        User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("Không tìm thấy user"));
+        User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException(MessageKey.USER_NOT_FOUND));
 
         Wishlist wishlist = wishListRepository.findByUserIdFetchProducts(userId).orElseGet(
                 () -> {
@@ -47,8 +48,11 @@ public class WishListServiceImpl implements WishListService {
         );
 
         Product product = productRepository.findById(productId).orElseThrow(
-                () -> new NotFoundException("Khong tim thay san pham")
+                () -> new NotFoundException(MessageKey.PRODUCT_NOT_FOUND)
         );
+        if (!product.getIsActive()) {
+            throw new InvalidException(MessageKey.PRODUCT_DOESNT_ACTIVE);
+        }
 
         boolean exists = wishListRepository.existsByUserIdAndProducts_Id(userId, productId);
         if (exists) {
@@ -61,18 +65,19 @@ public class WishListServiceImpl implements WishListService {
     }
 
     @Override
+    @Transactional
     public void removeProductFromWishList(int productId) {
         log.info("Remove product from wishlist: {}", productId);
         Integer userId = SecurityUtils.getCurrentUserId();
         if (userId == null) {
-            throw new InvalidException("Người dùng chưa đăng nhập");
+            throw new InvalidException(MessageKey.USER_NOT_LOGIN);
         }
 
         Wishlist wishlist = wishListRepository.findByUserIdFetchProducts(userId).orElseThrow(
-                () -> new NotFoundException("Khong tim thay wishlist")
+                () -> new NotFoundException(MessageKey.WISH_LIST_NOT_FOUND)
         );
         Product product = productRepository.findById(productId).orElseThrow(
-                () -> new NotFoundException("Khong tim thay san pham")
+                () -> new NotFoundException(MessageKey.PRODUCT_NOT_FOUND)
         );
 
         boolean exists = wishListRepository.existsByUserIdAndProducts_Id(userId, productId);
@@ -81,7 +86,6 @@ public class WishListServiceImpl implements WishListService {
         }
 
         wishlist.getProducts().remove(product);
-        wishListRepository.save(wishlist);
         log.info("REMOVED product from wishlist: {}", product.getName());
     }
 
@@ -89,9 +93,9 @@ public class WishListServiceImpl implements WishListService {
     @Transactional(readOnly = true)
     public WishListResponse getAllWishList() {
         Integer userId = SecurityUtils.getCurrentUserId();
-        Wishlist wishlist = wishListRepository.findByUserIdFetchProducts(userId).orElseThrow(
-                () -> new NotFoundException("Khong tim thay wishlist")
-        );
-        return WishListResponse.from(wishlist);
+        return wishListRepository.findByUserIdFetchProducts(userId)
+                .map(WishListResponse::from)
+                .orElseGet(
+                        WishListResponse::new);
     }
 }
