@@ -102,6 +102,21 @@ public class RateLimitUserFilter extends OncePerRequestFilter {
             return new RateLimitRule(30, Duration.ofMinutes(1), "wishlist-user:");
         }
 
+        if (path.startsWith("/api/v1/search/products")) {
+            return new RateLimitRule(50, Duration.ofMinutes(1), "wishlist-user:");
+        }
+
+        if (path.startsWith("/payment/payos_transfer_handler")) {
+            return new RateLimitRule(5, Duration.ofMinutes(1), "wishlist-user:");
+        }
+
+        if (path.startsWith("/api/v1/cart")) {
+            return new RateLimitRule(60, Duration.ofMinutes(1), "cart-user:");
+        }
+
+        if (path.startsWith("/api/v1/payment-method")) {
+            return new RateLimitRule(100, Duration.ofMinutes(1), "payment-method-user:");
+        }
         return null;
     }
 }

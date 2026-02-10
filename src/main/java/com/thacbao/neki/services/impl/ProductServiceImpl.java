@@ -475,6 +475,18 @@ public class ProductServiceImpl implements ProductService {
         log.info("Reserved {} units for variant {}", quantity, variantId);
     }
 
+    @Override
+    public void restoreReserveInventory(Integer variantId, Integer quantity) {
+        ProductVariant variant = variantRepository.findById(variantId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy phiên bản sản phẩm"));
+
+        Inventory inventory = inventoryRepository.findByVariant(variant)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy kho hàng"));
+
+        inventory.setReservedQuantity(inventory.getReservedQuantity() - quantity);
+        inventoryRepository.save(inventory);
+    }
+
     /**
      * Trả lại hàng đã giữ (khi hủy / timeout)
      * */
@@ -486,8 +498,8 @@ public class ProductServiceImpl implements ProductService {
         Inventory inventory = inventoryRepository.findByVariant(variant)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy kho hàng"));
 
-        // giảm reverse
-        inventory.setReservedQuantity(Math.max(0, inventory.getReservedQuantity() - quantity));
+        // tang lai so sp
+        inventory.setQuantity(inventory.getQuantity() + quantity);
 
         inventoryRepository.save(inventory);
 

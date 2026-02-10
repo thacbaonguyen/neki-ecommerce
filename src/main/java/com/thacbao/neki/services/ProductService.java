@@ -38,6 +38,7 @@ public interface ProductService {
     // iinventory
     void updateInventory(Integer variantId, Integer quantity);
     void reserveInventory(Integer variantId, Integer quantity);
+    void restoreReserveInventory(Integer variantId, Integer quantity);
     void releaseInventory(Integer variantId, Integer quantity);
     void confirmInventory(Integer variantId, Integer quantity);
     void adjustInventory(Integer variantId, Integer quantity, String reason);

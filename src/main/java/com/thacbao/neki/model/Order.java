@@ -1,5 +1,6 @@
 package com.thacbao.neki.model;
 
+import com.thacbao.neki.enums.OrderStatus;
 import com.thacbao.neki.model.base.AuditableEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -39,6 +40,9 @@ public class Order extends AuditableEntity {
     private BigDecimal finalAmount;
 
     @Column(nullable = false)
+    private String province;
+
+    @Column(nullable = false)
     private String district;
 
     @Column(nullable = false)
@@ -51,6 +55,13 @@ public class Order extends AuditableEntity {
     private String note;
 
     @Builder.Default
+    @Column(name = "order_status")
+    private OrderStatus status = OrderStatus.PENDING;
+
+    @Column(name = "phone_delivery")
+    private String phoneDelivery;
+
+    @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<OrderItem> orderItems = new HashSet<>();
 
@@ -61,4 +72,6 @@ public class Order extends AuditableEntity {
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private Set<Review> reviews = new HashSet<>();
+
+
 }
