@@ -24,93 +24,96 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final CustomUserDetailsService userDetailsService;
-    private final JwtFilter jwtFilter;
-    private final CustomOAuth2UserService customOAuth2UserService;
-    private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
-    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
-    private final RateLimitIPtFilter rateLimitIPtFilter;
-    private final RateLimitUserFilter rateLimitUserFilter;
+        private final CustomUserDetailsService userDetailsService;
+        private final JwtFilter jwtFilter;
+        private final CustomOAuth2UserService customOAuth2UserService;
+        private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
+        private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+        private final RateLimitIPtFilter rateLimitIPtFilter;
+        private final RateLimitUserFilter rateLimitUserFilter;
 
-    private static final String[] PUBLIC_MATCHERS = {
-            "/api/v1/auth/login",
-            "/api/v1/auth/signup",
-            "/api/v1/auth/forgot-password",
-            "/api/v1/auth/verify-account",
-            "/api/v1/auth/regenerate-otp",
-            "/api/v1/auth/test",
-            "/api/v1/auth/set-password/**",
-            "/api/v1/auth/verify-forgot-password",
-            "/api/v1/auth/refresh-token",
-            "/oauth2/**",
-            // Swagger
-            "/swagger-ui.html",
-            "/swagger-ui/**",
-            "/v3/api-docs/**",
-            // public prod & cate  endpoints
-            "/api/v1/categories/**",
-            "/api/v1/products/**",
-            "/api/v1/search/**",
-            "/api/v1/catalog/**"
-    };
+        private static final String[] PUBLIC_MATCHERS = {
+                        "/api/v1/auth/login",
+                        "/api/v1/auth/signup",
+                        "/api/v1/auth/forgot-password",
+                        "/api/v1/auth/verify-account",
+                        "/api/v1/auth/regenerate-otp",
+                        "/api/v1/auth/test",
+                        "/api/v1/auth/set-password/**",
+                        "/api/v1/auth/verify-forgot-password",
+                        "/api/v1/auth/refresh-token",
+                        "/oauth2/**",
+                        // Swagger
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        // public prod & cate endpoints
+                        "/api/v1/categories/**",
+                        "/api/v1/products/**",
+                        "/api/v1/search/**",
+                        "/api/v1/catalog/**",
+                        // PayOS webhook endpoint
+                        "/payment/**",
+                        //tracking order
+                        "/api/v1/order/tracking",
+                //review prduct
+                "/api/v1/review/all-review",
+        };
 
-    private static final String[] ADMIN_MATCHERS = {
-            "/api/v1/admin/**"
-    };
+        private static final String[] ADMIN_MATCHERS = {
+                        "/api/v1/admin/**"
+        };
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(PUBLIC_MATCHERS).permitAll()
-                        .requestMatchers("/oauth2/**").permitAll()
-                        .requestMatchers(ADMIN_MATCHERS).hasRole("ADMIN")
-                        .anyRequest().authenticated())
-                .oauth2Login(oauth2 -> oauth2
-                        .authorizationEndpoint(authorization -> authorization
-                                .baseUri("/oauth2/authorize")
-                        )
-                        .redirectionEndpoint(redirection -> redirection
-                                .baseUri("/oauth2/callback/*")
-                        )
-                        .userInfoEndpoint(userInfo -> userInfo
-                                .userService(customOAuth2UserService)
-                        )
-                        .successHandler(oAuth2AuthenticationSuccessHandler)
-                        .failureHandler(oAuth2AuthenticationFailureHandler)
-                )
-                .authenticationProvider(authenticationProvider())
-                .addFilterBefore(rateLimitIPtFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(rateLimitUserFilter, UsernamePasswordAuthenticationFilter.class);
+        @Bean
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+                http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .csrf(AbstractHttpConfigurer::disable)
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers(PUBLIC_MATCHERS).permitAll()
+                                                .requestMatchers("/oauth2/**").permitAll()
+                                                .requestMatchers(ADMIN_MATCHERS).hasRole("ADMIN")
+                                                .anyRequest().authenticated())
+                                .oauth2Login(oauth2 -> oauth2
+                                                .authorizationEndpoint(authorization -> authorization
+                                                                .baseUri("/oauth2/authorize"))
+                                                .redirectionEndpoint(redirection -> redirection
+                                                                .baseUri("/oauth2/callback/*"))
+                                                .userInfoEndpoint(userInfo -> userInfo
+                                                                .userService(customOAuth2UserService))
+                                                .successHandler(oAuth2AuthenticationSuccessHandler)
+                                                .failureHandler(oAuth2AuthenticationFailureHandler))
+                                .authenticationProvider(authenticationProvider())
+                                .addFilterBefore(rateLimitIPtFilter, UsernamePasswordAuthenticationFilter.class)
+                                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                                .addFilterAfter(rateLimitUserFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+                return http.build();
+        }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(10);
-    }
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+                return new BCryptPasswordEncoder(10);
+        }
 
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
-    }
+        @Bean
+        public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
+                        throws Exception {
+                return authenticationConfiguration.getAuthenticationManager();
+        }
 
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
-    }
+        @Bean
+        public AuthenticationProvider authenticationProvider() {
+                DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+                authProvider.setUserDetailsService(userDetailsService);
+                authProvider.setPasswordEncoder(passwordEncoder());
+                return authProvider;
+        }
 
-    @Bean
-    public FilterRegistrationBean<JwtFilter> jwtFilterRegistration(JwtFilter jwtFilter) {
-        FilterRegistrationBean<JwtFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(jwtFilter);
-        registration.setEnabled(false);
-        return registration;
-    }
+        @Bean
+        public FilterRegistrationBean<JwtFilter> jwtFilterRegistration(JwtFilter jwtFilter) {
+                FilterRegistrationBean<JwtFilter> registration = new FilterRegistrationBean<>();
+                registration.setFilter(jwtFilter);
+                registration.setEnabled(false);
+                return registration;
+        }
 }

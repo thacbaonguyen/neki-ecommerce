@@ -1,6 +1,9 @@
 package com.thacbao.neki.repositories.jpa;
 
 import com.thacbao.neki.model.OrderItem;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -33,4 +36,6 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Integer> {
 
     // Delete all items by order
     void deleteByOrderId(Integer orderId);
+
+    Page<OrderItem> findByOrderUserId(Integer userId, Pageable pageable);
 }

@@ -1,147 +1,167 @@
-//package com.thacbao.neki.controllers.order;
-//
-//import com.fasterxml.jackson.databind.ObjectMapper;
-//import com.fasterxml.jackson.databind.node.ObjectNode;
-//import com.thacbao.neki.dto.request.product.OrderRequest;
-//import com.thacbao.neki.dto.response.OrderResponse;
-//import com.thacbao.neki.services.OrderService;
-//import lombok.RequiredArgsConstructor;
-//import org.springframework.http.ResponseEntity;
-//import org.springframework.web.bind.annotation.*;
-//import vn.payos.PayOS;
-//import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
-//import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
-//import vn.payos.model.v2.paymentRequests.PaymentLink;
-//import vn.payos.model.v2.paymentRequests.PaymentLinkItem;
-//import vn.payos.model.webhooks.ConfirmWebhookResponse;
-//
-//import java.util.Date;
-//import java.util.List;
-//import java.util.Map;
-//
-//@RestController
-//@RequestMapping("/api/v1/order")
-//@RequiredArgsConstructor
-//public class OrderController {
-//    private final PayOS payOS;
-//    private final OrderService orderService;
-//
-//    @PostMapping(path = "/create")
-//    public ObjectNode createPaymentLink(@RequestBody OrderRequest request) {
-//        ObjectMapper objectMapper = new ObjectMapper();
-//        ObjectNode response = objectMapper.createObjectNode();
-//        try {
-//            OrderResponse orderResponse = orderService.createOrderFromCart();
-//            Order order = orderService.createOrder();
-//            orderDetailService.createOrderDetail(order);
-//            final String productName = request.getProductName();
-//            final String description = request.getDescription();
-//            final String returnUrl = request.getReturnUrl();
-//            final String cancelUrl = request.getCancelUrl();
-//            final Long price = (long) order.getTotalAmount();
-//            // Gen order code
-//            String currentTimeString = String.valueOf(String.valueOf(new Date().getTime()));
-//            long orderCode = Long.parseLong(currentTimeString.substring(currentTimeString.length() - 6));
-//
-//            PaymentLinkItem item = PaymentLinkItem.builder()
-//                    .name(productName)
-//                    .price(price)  // price là long
-//                    .quantity(1)
-//                    .build();
-//
-//            CreatePaymentLinkRequest paymentRequest = CreatePaymentLinkRequest.builder()
-//                    .orderCode(orderCode)
-//                    .amount(price)
-//                    .description(description)
-//                    .items(List.of(item))  // List<Item>
-//                    .returnUrl(returnUrl)
-//                    .cancelUrl(cancelUrl)
-//                    .build();
-//
-//            CreatePaymentLinkResponse apiResponse = payOS.paymentRequests().create(paymentRequest);
-//            order.setOrderCode(String.valueOf(apiResponse.getOrderCode()));
-//            orderService.saveOrder(order);
-//
-//            response.put("error", 0);
-//            response.put("message", "success");
-//            response.set("data", objectMapper.valueToTree(apiResponse));
-//            return response;
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            response.put("error", -1);
-//            response.put("message", "fail");
-//            response.set("data", null);
-//            return response;
-//
-//        }
-//    }
-//
-//    @GetMapping(path = "/{orderId}")
-//    public ObjectNode getOrderById(@PathVariable("orderId") long orderId) {
-//        ObjectMapper objectMapper = new ObjectMapper();
-//        ObjectNode response = objectMapper.createObjectNode();
-//
-//        try {
-//            PaymentLink order = payOS.paymentRequests().get(orderId);
-//
-//            response.set("data", objectMapper.valueToTree(order));
-//            response.put("error", 0);
-//            response.put("message", "ok");
-//            return response;
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            response.put("error", -1);
-//            response.put("message", e.getMessage());
-//            response.set("data", null);
-//            return response;
-//        }
-//    }
-//
-//    @PutMapping(path = "/{orderId}")
-//    public ObjectNode cancelOrder(@PathVariable("orderId") int orderId) {
-//        ObjectMapper objectMapper = new ObjectMapper();
-//        ObjectNode response = objectMapper.createObjectNode();
-//        try {
-//            PaymentLink order = payOS.paymentRequests().cancel((long) orderId, "reason if any");
-//            response.set("data", objectMapper.valueToTree(order));
-//            response.put("error", 0);
-//            response.put("message", "ok");
-//            return response;
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            response.put("error", -1);
-//            response.put("message", e.getMessage());
-//            response.set("data", null);
-//            return response;
-//        }
-//    }
-//
-//    @PostMapping(path = "/confirm-webhook")
-//    public ObjectNode confirmWebhook(@RequestBody Map<String, String> requestBody) {
-//        ObjectMapper objectMapper = new ObjectMapper();
-//        ObjectNode response = objectMapper.createObjectNode();
-//        try {
-//            String webhookUrl = requestBody.get("webhookUrl");
-//            if (webhookUrl == null || webhookUrl.isEmpty()) {
-//                throw new IllegalArgumentException("webhookUrl is required");
-//            }
-//            ConfirmWebhookResponse result = payOS.webhooks().confirm(webhookUrl);
-//            response.set("data", objectMapper.valueToTree(result));
-//            response.put("error", 0);
-//            response.put("message", "ok");
-//            return response;
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            response.put("error", -1);
-//            response.put("message", e.getMessage());
-//            response.set("data", null);
-//            return response;
-//        }
-//    }
-//
-//    @PutMapping("/update-status")
-//    public ResponseEntity<ApiResponse> updateStatusOrder(@RequestBody OrderConfirmRequest request){
-//        return orderService.updateStatus(request);
-//    }
-//}
+package com.thacbao.neki.controllers.order;
+
+import com.thacbao.neki.dto.request.product.*;
+import com.thacbao.neki.dto.response.ApiResponse;
+import com.thacbao.neki.dto.response.OrderResponse;
+import com.thacbao.neki.dto.response.OrderSummaryResponse;
+import com.thacbao.neki.services.OrderService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+
+@RestController
+@RequestMapping("/api/v1/order")
+@RequiredArgsConstructor
+public class OrderController {
+    private final OrderService orderService;
+
+    @PostMapping(path = "/create")
+    public ResponseEntity<ApiResponse<OrderResponse>> createOrderFromCart(@RequestBody OrderRequest request) {
+        OrderResponse orderResponse = orderService.createOrderFromCart(request);
+        return ResponseEntity.ok(
+                ApiResponse.<OrderResponse>builder()
+                        .code(200)
+                        .status("success")
+                        .data(orderResponse)
+                        .build()
+        );
+    }
+
+    @PostMapping(path = "/create-selected")
+    public ResponseEntity<ApiResponse<OrderResponse>> createSelectedOrderFromCart(
+            @RequestBody CreateSelectedOrderRequest request) {
+        OrderResponse orderResponse = orderService.createOrderFromSelectedItems(request.getOrderRequest(), request.getOrderItemRequests());
+        return ResponseEntity.ok(
+                ApiResponse.<OrderResponse>builder()
+                        .code(200)
+                        .status("success")
+                        .data(orderResponse)
+                        .build()
+        );
+    }
+
+    @PostMapping(path = "/buy-now")
+    public ResponseEntity<ApiResponse<OrderResponse>> buyNow(@RequestBody BuyNowRequest request) {
+        OrderResponse orderResponse = orderService.buyNow(request.getOrderRequest(), request.getOrderItemRequest());
+        return ResponseEntity.ok(
+                ApiResponse.<OrderResponse>builder()
+                        .code(200)
+                        .status("success")
+                        .data(orderResponse)
+                        .build()
+        );
+    }
+
+    // get
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<OrderResponse>> getOrderById(@PathVariable("id") Integer id) {
+        OrderResponse orderResponse = orderService.getOrderById(id);
+        return ResponseEntity.ok(
+                ApiResponse.<OrderResponse>builder()
+                        .code(200)
+                        .status("success")
+                        .data(orderResponse)
+                        .build()
+        );
+    }
+
+    @GetMapping("/{orderNumber}")
+    public ResponseEntity<ApiResponse<OrderResponse>> getOrderByOrderNumber(@PathVariable("orderNumber") String orderNumber) {
+        OrderResponse orderResponse = orderService.getOrderByOrderNumber(orderNumber);
+        return ResponseEntity.ok(
+                ApiResponse.<OrderResponse>builder()
+                        .code(200)
+                        .status("success")
+                        .data(orderResponse)
+                        .build()
+        );
+    }
+
+    @GetMapping("/my-order")
+    public ResponseEntity<ApiResponse<Page<OrderSummaryResponse>>> getMyOrder(
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        Page<OrderSummaryResponse> orderResponses = orderService.getMyOrders(pageable);
+
+        return ResponseEntity.ok(
+                ApiResponse.<Page<OrderSummaryResponse>>builder()
+                        .code(200)
+                        .status("success")
+                        .data(orderResponses)
+                        .build()
+        );
+    }
+
+    @GetMapping("/my-order/{status}")
+    public ResponseEntity<ApiResponse<Page<OrderSummaryResponse>>> getMyOrderByStatus(@PathVariable("status") String status,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        Page<OrderSummaryResponse> orderResponses = orderService.getMyOrdersByStatus(status, pageable);
+
+        return ResponseEntity.ok(
+                ApiResponse.<Page<OrderSummaryResponse>>builder()
+                        .code(200)
+                        .status("success")
+                        .data(orderResponses)
+                        .build()
+        );
+    }
+
+    @PostMapping("/cancel/{orderId}")
+    public ResponseEntity<ApiResponse<Void>> cancelOrder(@PathVariable("orderId") Integer orderId, @RequestBody CancelOrderRequest request) {
+        orderService.cancelOrder(orderId, request.getReason());
+        return ResponseEntity.ok(
+                ApiResponse.<Void>builder()
+                        .code(200)
+                        .status("success")
+                        .message("Hủy đơn hàng thành công")
+                        .build()
+        );
+    }
+
+    @PostMapping("/re-order/{orderId}")
+    public ResponseEntity<ApiResponse<OrderResponse>> reOrder(@PathVariable("orderId") Integer orderId) {
+        OrderResponse orderResponse = orderService.reOrder(orderId);
+        return ResponseEntity.ok(
+                ApiResponse.<OrderResponse>builder()
+                        .code(200)
+                        .status("success")
+                        .data(orderResponse)
+                        .build()
+        );
+    }
+
+    @GetMapping("/tracking/{orderNumber}")
+    public ResponseEntity<ApiResponse<OrderResponse>> trackingOrder(@PathVariable("orderNumber") String orderNumber,
+                                                                    @RequestParam String email) {
+        OrderResponse orderResponse = orderService.trackOrder(orderNumber, email);
+        return ResponseEntity.ok(
+                ApiResponse.<OrderResponse>builder()
+                        .code(200)
+                        .status("success")
+                        .data(orderResponse)
+                        .build()
+        );
+    }
+
+    @GetMapping("/order-timeline/{orderId}")
+    public ResponseEntity<ApiResponse<List<Object>>> getOrderTimeline(@PathVariable("orderId") Integer orderId) {
+        List<Object> timeline = orderService.getOrderTimeline(orderId);
+        return ResponseEntity.ok(
+                ApiResponse.<List<Object>>builder()
+                        .code(200)
+                        .status("success")
+                        .data(timeline)
+                        .build()
+        );
+    }
+
+}

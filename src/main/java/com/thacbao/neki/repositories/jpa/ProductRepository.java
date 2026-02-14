@@ -2,6 +2,7 @@ package com.thacbao.neki.repositories.jpa;
 
 import com.thacbao.neki.model.Product;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -63,5 +64,11 @@ public interface ProductRepository extends JpaRepository<Product, Integer>, Prod
     void updateRating(@Param("productId") Integer productId,
                       @Param("rating") BigDecimal rating,
                       @Param("count") Integer count);
+
+
+    @Query("SELECT p.id FROM Product p WHERE p.isActive = true")
+    List<Integer> findActiveProductIds(Pageable pageable);
+
+    Page<Product> findByIsActiveTrueOrderByTotalSoldDescAverageRatingDesc(Pageable pageable);
 }
 

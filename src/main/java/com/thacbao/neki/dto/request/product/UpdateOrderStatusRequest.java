@@ -1,4 +1,8 @@
 package com.thacbao.neki.dto.request.product;
 
-public class UpdateOrderStatusRequesy {
+import lombok.Data;
+
+@Data
+public class UpdateOrderStatusRequest {
+    private String status;
 }

@@ -22,6 +22,12 @@ public class DiscountResponse {
     private String discountType;
     private Integer percent;
     private BigDecimal reduceAmount;
+    private Integer usageLimit;
+    private Integer usedCount;
+    private Integer userUsageLimit;
+    private BigDecimal minOrderAmount;
+    private java.time.LocalDate startDate;
+    private java.time.LocalDate endDate;
     private LocalDateTime createAt;
 
     public static DiscountResponse from(Discount discount) {
@@ -32,6 +38,12 @@ public class DiscountResponse {
                 .discountType(discount.getDiscountType().getValue())
                 .percent(discount.getPercent())
                 .reduceAmount(discount.getReduceAmount())
+                .usageLimit(discount.getUsageLimit())
+                .usedCount(discount.getUsedCount())
+                .userUsageLimit(discount.getUserUsageLimit())
+                .minOrderAmount(discount.getMinOrderAmount())
+                .startDate(discount.getStartDate())
+                .endDate(discount.getEndDate())
                 .createAt(discount.getCreatedAt())
                 .build();
     }

@@ -31,12 +31,12 @@ public interface OrderRepository extends JpaRepository<Order, Integer>, OrderRep
         // Count orders by user
         long countByUserId(Integer userId);
 
-        // Get total revenue
-        @Query("SELECT COALESCE(SUM(o.finalAmount), 0) FROM Order o")
+        // Get total revenue (exclude cancelled/pending)
+        @Query("SELECT COALESCE(SUM(o.finalAmount), 0) FROM Order o WHERE o.status NOT IN ('CANCELLED', 'PENDING')")
         BigDecimal getTotalRevenue();
 
-        // Get revenue by date range
-        @Query("SELECT COALESCE(SUM(o.finalAmount), 0) FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate")
+        // Get revenue by date range (exclude cancelled/pending)
+        @Query("SELECT COALESCE(SUM(o.finalAmount), 0) FROM Order o WHERE o.createdAt BETWEEN :startDate AND :endDate AND o.status NOT IN ('CANCELLED', 'PENDING')")
         BigDecimal getRevenueByDateRange(@Param("startDate") LocalDateTime startDate,
                         @Param("endDate") LocalDateTime endDate);
 
@@ -64,4 +64,28 @@ public interface OrderRepository extends JpaRepository<Order, Integer>, OrderRep
 
         // Count by date range using LocalDateTime
         long countByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
+
+        //user can review
+        @Query("""
+    SELECT DISTINCT o
+    FROM Order o
+    JOIN o.orderItems oi
+    JOIN oi.variant pv
+    WHERE o.user.id = :userId
+      AND o.status = com.thacbao.neki.enums.OrderStatus.DELIVERED
+      AND pv.product.id = :productId
+      AND NOT EXISTS (
+          SELECT 1
+          FROM Review r
+          WHERE r.product.id = :productId
+            AND r.user.id = :userId
+            AND r.order.id = o.id
+      )
+    ORDER BY o.createdAt ASC
+""")
+        Page<Order> findOrdersUserCanReview(
+                @Param("userId") Integer userId,
+                @Param("productId") Integer productId,
+                Pageable pageable
+        );
 }

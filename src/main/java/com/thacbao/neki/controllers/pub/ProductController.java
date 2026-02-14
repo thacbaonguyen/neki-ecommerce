@@ -2,13 +2,17 @@ package com.thacbao.neki.controllers.pub;
 
 import com.thacbao.neki.dto.request.product.ProductFilterRequest;
 import com.thacbao.neki.dto.response.*;
+import com.thacbao.neki.security.SecurityUtils;
 import com.thacbao.neki.services.ProductService;
+import com.thacbao.neki.services.RecommendationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +23,7 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
+    private final RecommendationService recommendationService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProductListResponse>>> filterProducts(
@@ -149,5 +154,39 @@ public class ProductController {
                         .data(options)
                         .build()
         );
+    }
+
+    //rcm system using item-base collaborative filtering
+
+    @GetMapping("/similar/{productId}")
+    public ResponseEntity<ApiResponse<Page<ProductListResponse>>> getSimilarProducts(
+            @PathVariable Integer productId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ProductListResponse> similarProducts = recommendationService.getSimilarProducts(productId, pageable);
+
+        return ResponseEntity.ok(ApiResponse
+                .<Page<ProductListResponse>>builder()
+                        .code(200)
+                .status("success")
+                .data(similarProducts)
+                .build());
+    }
+
+    @GetMapping("/for-you")
+    public ResponseEntity<ApiResponse<List<ProductListResponse>>> getRecommendedForYou(
+            @RequestParam(defaultValue = "12") int limit) {
+
+        Integer userId = SecurityUtils.getCurrentUserId();
+        List<ProductListResponse> recommendations = recommendationService.getRecommendedForYou(userId, limit);
+
+        return ResponseEntity.ok(ApiResponse
+                .<List<ProductListResponse>>builder()
+                .code(200)
+                .status("success")
+                .data(recommendations)
+                .build());
     }
 }

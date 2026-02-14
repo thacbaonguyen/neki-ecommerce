@@ -26,4 +26,10 @@ public class DiscountRequest {
     @NotBlank(message = "mo ta khong duoc de trong")
     private String description;
     private boolean isActive;
+
+    private Integer usageLimit;
+    private Integer userUsageLimit;
+    private java.math.BigDecimal minOrderAmount;
+    private java.time.LocalDate startDate;
+    private java.time.LocalDate endDate;
 }

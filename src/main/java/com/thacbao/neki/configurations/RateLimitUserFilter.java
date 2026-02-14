@@ -77,8 +77,8 @@ public class RateLimitUserFilter extends OncePerRequestFilter {
 
     private RateLimitRule resolveRule(String path) {
 
-        if (path.startsWith("/api/v1/orders")
-                || path.startsWith("/api/v1/checkout")) {
+        if (path.startsWith("/api/v1/order")
+                || path.startsWith("/payment")) {
             return new RateLimitRule(10, Duration.ofMinutes(1), "order-user:");
         }
 
@@ -102,12 +102,9 @@ public class RateLimitUserFilter extends OncePerRequestFilter {
             return new RateLimitRule(30, Duration.ofMinutes(1), "wishlist-user:");
         }
 
-        if (path.startsWith("/api/v1/search/products")) {
-            return new RateLimitRule(50, Duration.ofMinutes(1), "wishlist-user:");
-        }
 
         if (path.startsWith("/payment/payos_transfer_handler")) {
-            return new RateLimitRule(5, Duration.ofMinutes(1), "wishlist-user:");
+            return new RateLimitRule(5, Duration.ofMinutes(1), "payment-user:");
         }
 
         if (path.startsWith("/api/v1/cart")) {
@@ -116,6 +113,10 @@ public class RateLimitUserFilter extends OncePerRequestFilter {
 
         if (path.startsWith("/api/v1/payment-method")) {
             return new RateLimitRule(100, Duration.ofMinutes(1), "payment-method-user:");
+        }
+
+        if (path.startsWith("/api/v1/review")){
+            return new RateLimitRule(30, Duration.ofMinutes(1), "review-user:");
         }
         return null;
     }

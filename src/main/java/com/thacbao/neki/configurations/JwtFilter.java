@@ -33,7 +33,9 @@ public class JwtFilter extends OncePerRequestFilter {
             "/api/v1/auth/test",
             "/api/v1/auth/set-password.*",
             "/api/v1/auth/verify-forgot-password",
-            "/oauth2/callback.*"
+            "/oauth2/callback.*",
+            "/api/v1/order/tracking",
+            "/api/v1/review/all-review"
     };
 
     private Boolean isPublicPath(String path){

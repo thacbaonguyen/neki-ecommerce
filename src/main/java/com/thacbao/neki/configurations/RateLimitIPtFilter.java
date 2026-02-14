@@ -64,12 +64,21 @@ public class RateLimitIPtFilter extends OncePerRequestFilter {
         }
 
         if (path.startsWith("/api/v1/search/products")) {
-            return new RateLimitRule(30, Duration.ofMinutes(1), "search-public-ip:");
+            return new RateLimitRule(50, Duration.ofMinutes(1), "search-public-ip:");
         }
 
         if (path.startsWith("/api/v1/products")
                 || path.startsWith("/api/v1/categories") || path.startsWith("/api/v1/catalog")) {
             return new RateLimitRule(100, Duration.ofMinutes(1), "public-ip:");
+        }
+
+
+        if (path.startsWith("/api/v1/review/all-review")) {
+            return new RateLimitRule(100, Duration.ofMinutes(1), "review-ip:");
+        }
+
+        if (path.startsWith("/api/v1/discount")) {
+            return new RateLimitRule(100, Duration.ofMinutes(1), "discount-ip:");
         }
 
         return null;
