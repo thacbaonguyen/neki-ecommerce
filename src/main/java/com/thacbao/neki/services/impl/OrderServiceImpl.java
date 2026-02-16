@@ -1,6 +1,5 @@
 package com.thacbao.neki.services.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.thacbao.neki.dto.request.product.OrderFilterRequest;
 import com.thacbao.neki.dto.request.product.OrderItemRequest;
@@ -16,9 +15,7 @@ import com.thacbao.neki.model.*;
 import com.thacbao.neki.repositories.jpa.*;
 import com.thacbao.neki.security.SecurityUtils;
 import com.thacbao.neki.security.UserPrincipal;
-import com.thacbao.neki.services.OrderService;
-import com.thacbao.neki.services.PaymentService;
-import com.thacbao.neki.services.ProductService;
+import com.thacbao.neki.services.*;
 import com.thacbao.neki.utils.MessageKey;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,15 +24,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.payos.PayOS;
-import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
-import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
-import vn.payos.model.v2.paymentRequests.PaymentLinkItem;
-
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.security.SecureRandom;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -54,18 +44,13 @@ public class OrderServiceImpl implements OrderService {
     private final DiscountRepository discountRepository;
 
     private final ProductService productService;
-    private final PayOS payOS;
     private final PaymentService paymentService;
+    private final ShippingService shippingService;
+    private final DiscountCalculationService discountCalculationService;
+    private final PaymentLinkService paymentLinkService;
+    private final DiscountService discountService;
 
     private static final int MAX_QUANTITY_PER_ITEM = 10;
-    private static final BigDecimal FREE_SHIPPING_THRESHOLD = new BigDecimal("500000");
-    private static final BigDecimal STANDARD_SHIPPING_FEE = new BigDecimal("30000");
-
-    @Value("${URL.returnUrl}")
-    private String returnUrl;
-
-    @Value("${URL.cancelUrl}")
-    private String cancelUrl;
 
     @Value("${PAYMENT.cod}")
     private String cod;
@@ -74,10 +59,10 @@ public class OrderServiceImpl implements OrderService {
     private String payos;
 
     // USER OPERATIONS
-    // tru kho khi doi status thu cong sang confirm cod(ok), discount fix, xoa hang khi tt selected(ok), them province(ok)
+    // tru kho khi doi status thu cong sang confirm cod(ok), discount fix, xoa hang
+    // khi tt selected(ok), them province(ok)
 
     @Override
-    @Transactional
     public OrderResponse createOrderFromCart(OrderRequest request) {
         log.info("create order from cart");
         User user = getCurrentUser();
@@ -102,7 +87,7 @@ public class OrderServiceImpl implements OrderService {
         cart.getCartItems().clear();
         cartRepository.save(cart);
         if (paymentResponse.getPaymentMethod().getName().equalsIgnoreCase(payos)) {
-            ObjectNode response = createPaymentLink(order);
+            ObjectNode response = paymentLinkService.createPaymentLink(order);
             return OrderResponse.fromWithPaymentLink(order, response);
         }
         log.info("create order from cart success");
@@ -110,7 +95,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
     public OrderResponse createOrderFromSelectedItems(OrderRequest request, List<OrderItemRequest> items) {
         User user = getCurrentUser();
         Cart cart = cartRepository.findByUserId(user.getId())
@@ -123,16 +107,17 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = createOrder(user, request, items);
 
-        for (OrderItem item : order.getOrderItems()){
-            cart.getCartItems().remove(item);
-        }
+        Set<Integer> orderedVariantIds = order.getOrderItems().stream()
+                .map(item -> item.getVariant().getId())
+                .collect(Collectors.toSet());
+        cart.getCartItems().removeIf(cartItem -> orderedVariantIds.contains(cartItem.getVariant().getId()));
+        cartRepository.save(cart);
 
         String transactionId = "ORD-" + order.getOrderNumber();
         PaymentResponse paymentResponse = paymentService.create(order, request.getPaymentMethodId(), transactionId);
 
-
         if (paymentResponse.getPaymentMethod().getName().equalsIgnoreCase(payos)) {
-            ObjectNode response = createPaymentLink(order);
+            ObjectNode response = paymentLinkService.createPaymentLink(order);
             return OrderResponse.fromWithPaymentLink(order, response);
         }
 
@@ -148,7 +133,7 @@ public class OrderServiceImpl implements OrderService {
         PaymentResponse paymentResponse = paymentService.create(order, request.getPaymentMethodId(), transactionId);
 
         if (paymentResponse.getPaymentMethod().getName().equalsIgnoreCase(payos)) {
-            ObjectNode response = createPaymentLink(order);
+            ObjectNode response = paymentLinkService.createPaymentLink(order);
             return OrderResponse.fromWithPaymentLink(order, response);
         }
 
@@ -260,7 +245,7 @@ public class OrderServiceImpl implements OrderService {
         PaymentResponse paymentResponse = paymentService.create(newOrder, request.getPaymentMethodId(), transactionId);
 
         if (paymentResponse.getPaymentMethod().getName().equalsIgnoreCase(payos)) {
-            ObjectNode response = createPaymentLink(newOrder);
+            ObjectNode response = paymentLinkService.createPaymentLink(newOrder);
             return OrderResponse.fromWithPaymentLink(newOrder, response);
         }
 
@@ -291,7 +276,8 @@ public class OrderServiceImpl implements OrderService {
 
         OrderStatus newStatus = parseOrderStatus(status);
         validateStatusTransition(order.getStatus(), newStatus);
-        if (OrderStatus.CONFIRMED.equals(order.getStatus())) {
+        // Confirm inventory chỉ khi chuyển từ PENDING → CONFIRMED (COD)
+        if (OrderStatus.CONFIRMED.equals(newStatus) && OrderStatus.PENDING.equals(order.getStatus())) {
             for (OrderItem item : order.getOrderItems()) {
                 productService.confirmInventory(item.getVariant().getId(), item.getQuantity());
             }
@@ -415,102 +401,6 @@ public class OrderServiceImpl implements OrderService {
         return new ArrayList<>(timeline);
     }
 
-    // STATISTICS REPORTS
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Object[]> getDailyOrderCounts(LocalDate startDate, LocalDate endDate) {
-        return orderRepository.getDailyOrderCounts(startDate, endDate);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Object[]> getDailyRevenue(LocalDate startDate, LocalDate endDate) {
-        return orderRepository.getDailyRevenue(startDate, endDate);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Object[]> getTopDistrictsByOrderCount(int limit) {
-        return orderRepository.getTopDistrictsByOrderCount(limit);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public BigDecimal getTotalRevenue() {
-        BigDecimal revenue = orderRepository.getTotalRevenue();
-        return revenue != null ? revenue : BigDecimal.ZERO;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public BigDecimal getRevenueByDateRange(LocalDate startDate, LocalDate endDate) {
-        BigDecimal revenue = orderRepository.getRevenueByDateRange(
-                startDate.atStartOfDay(),
-                endDate.atTime(23, 59, 59));
-        return revenue != null ? revenue : BigDecimal.ZERO;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public BigDecimal getTotalRevenueByUser(Integer userId) {
-        BigDecimal revenue = orderRepository.getTotalRevenueByUser(userId);
-        return revenue != null ? revenue : BigDecimal.ZERO;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public long countTotalOrders() {
-        return orderRepository.count();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public long countOrdersByStatus(String status) {
-        OrderStatus orderStatus = parseOrderStatus(status);
-        return orderRepository.countByStatus(orderStatus);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public long countOrdersByDateRange(LocalDate startDate, LocalDate endDate) {
-        return orderRepository.countByCreatedAtBetween(
-                startDate.atStartOfDay(),
-                endDate.atTime(23, 59, 59));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public long countOrdersByUser(Integer userId) {
-        return orderRepository.countByUserId(userId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public BigDecimal getAverageOrderValue() {
-        BigDecimal total = getTotalRevenue();
-        long count = countTotalOrders();
-        if (count == 0)
-            return BigDecimal.ZERO;
-        return total.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Object[]> getMonthlyStatistics(int year) {
-        List<Object[]> result = new ArrayList<>();
-        for (int month = 1; month <= 12; month++) {
-            LocalDate start = LocalDate.of(year, month, 1);
-            LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
-
-            long count = countOrdersByDateRange(start, end);
-            BigDecimal revenue = getRevenueByDateRange(start, end);
-
-            result.add(new Object[] { month, count, revenue });
-        }
-        return result;
-    }
-
     // VALIDATION & UTILITY
 
     @Override
@@ -549,52 +439,14 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public String generateOrderNumber() {
-        String currentTimeString = String.valueOf(String.valueOf(new Date().getTime()));
-        String orderCode = currentTimeString.substring(currentTimeString.length() - 6);
-        String random = String.format("%04d", new Random().nextInt(10000));
-        return orderCode + random;
-    }
-
-    // DISCOUNT & PROMOTION
-
-    @Override
-    public Map<DiscountType, BigDecimal> applyDiscountCode(String discountCode, BigDecimal orderAmount, BigDecimal shippingFee) {
-        Map<DiscountType, BigDecimal> result = new HashMap<>();
-        if (discountCode == null || discountCode.isEmpty()) {
-            return result;
-        }
-
-        Discount discount = getDiscount(discountCode);
-        if (discount.getDiscountType().equals(DiscountType.AMOUNT)) {
-            result.put(DiscountType.SHIP, BigDecimal.ZERO);
-            if (discount.getPercent().compareTo(0) > 0) {
-                result.put(DiscountType.AMOUNT, orderAmount.multiply(BigDecimal.valueOf(discount.getPercent()/100)));
-            }
-
-            if (discount.getReduceAmount().compareTo(orderAmount) > 0) {
-                result.put(DiscountType.AMOUNT, discount.getReduceAmount());
-            }
-            return result;
-        }
-
-        else {
-            result.put(DiscountType.AMOUNT, BigDecimal.ZERO);
-            if (discount.getPercent().compareTo(0) > 0) {
-                result.put(DiscountType.SHIP, shippingFee.multiply(BigDecimal.valueOf(discount.getPercent()/100)));
-            }
-            if (discount.getReduceAmount().compareTo(orderAmount) > 0) {
-                result.put(DiscountType.SHIP, discount.getReduceAmount());
-            }
-            return result;
-        }
-    }
-
-    @Override
-    public BigDecimal calculateShippingFee(String district, String ward, BigDecimal orderAmount) {
-        if (orderAmount.compareTo(FREE_SHIPPING_THRESHOLD) >= 0) {
-            return BigDecimal.ZERO;
-        }
-        return STANDARD_SHIPPING_FEE;
+        SecureRandom secureRandom = new SecureRandom();
+        String orderNumber;
+        do {
+            String timePart = String.valueOf(System.currentTimeMillis() % 1_000_000);
+            String randomPart = String.format("%04d", secureRandom.nextInt(10000));
+            orderNumber = timePart + randomPart;
+        } while (orderRepository.existsByOrderNumber(orderNumber));
+        return orderNumber;
     }
 
     // HELpER METHOD
@@ -634,12 +486,15 @@ public class OrderServiceImpl implements OrderService {
             orderItems.add(orderItem);
         }
 
-        BigDecimal shippingFee = calculateShippingFee(request.getDistrict(), request.getWard(), totalAmount);
+        BigDecimal shippingFee = shippingService.calculateShippingFee(request.getDistrict(), request.getWard(),
+                totalAmount);
         BigDecimal discountAmount = BigDecimal.ZERO;
 
         if (request.getDiscountCode() != null) {
             // lay discount
-            Map<DiscountType, BigDecimal> discountMap = applyDiscountCode(request.getDiscountCode(), totalAmount, shippingFee);
+            Map<DiscountType, BigDecimal> discountMap = discountCalculationService.applyDiscountCode(
+                    request.getDiscountCode(), user, totalAmount,
+                    shippingFee);
             // tru amount hoac ship
             discountAmount = discountMap.get(DiscountType.AMOUNT);
             shippingFee = shippingFee.subtract(discountMap.get(DiscountType.SHIP));
@@ -664,6 +519,15 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         order = orderRepository.save(order);
+
+        // record  usage if applied
+        if (request.getDiscountCode() != null) {
+            Discount discount = discountRepository.findByName(request.getDiscountCode())
+                    .orElse(null);
+            if (discount != null) {
+                discountService.recordUsage(discount, user, order);
+            }
+        }
 
         for (OrderItem orderItem : orderItems) {
             orderItem.setOrder(order);
@@ -692,13 +556,6 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-
-    private Discount getDiscount(String discountCode) {
-
-        return discountRepository.findByName(discountCode)
-                .orElseThrow(() -> new NotFoundException(MessageKey.DISCOUNT_NOT_FOUND));
-    }
-
     private void validateStatusTransition(OrderStatus current, OrderStatus next) {
         Map<OrderStatus, Set<OrderStatus>> allowedTransitions = Map.of(
                 OrderStatus.PENDING, Set.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED),
@@ -712,43 +569,4 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    private ObjectNode createPaymentLink(Order order) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectNode response = objectMapper.createObjectNode();
-        try {
-            List<PaymentLinkItem> paymentLinkItems = order.getOrderItems().stream()
-                    .map(item -> PaymentLinkItem.builder()
-                            .name(item.getVariant().getProduct().getName())
-                            .price(item.getUnitPrice().longValue())
-                            .quantity(item.getQuantity())
-                            .build())
-                    .collect(Collectors.toList());
-
-            long totalAmount = order.getFinalAmount().longValue();
-
-            CreatePaymentLinkRequest paymentLinkRequest = CreatePaymentLinkRequest.builder()
-                    .orderCode(Long.parseLong(order.getOrderNumber()))
-                    .amount(totalAmount)
-                    .description("Order :" + order.getOrderNumber())
-                    .items(paymentLinkItems)
-                    .buyerPhone(order.getPhoneDelivery())
-                    .buyerAddress(order.getAddressDetail() + ", " + order.getWard() + ", " + order.getDistrict() + ", "  + order.getProvince())
-                    .returnUrl(returnUrl)
-                    .cancelUrl(cancelUrl)
-                    .expiredAt(1000 * 60 * 10L)
-                    .build();
-
-            CreatePaymentLinkResponse paymentLinkResponse = payOS.paymentRequests().create(paymentLinkRequest);
-            response.put("error", 0);
-            response.put("message", "success");
-            response.set("data", objectMapper.valueToTree(paymentLinkResponse));
-            return response;
-        } catch (Exception e) {
-            response.put("error", -1);
-            response.put("message", "fail");
-            response.set("data", null);
-            return response;
-        }
-
-    }
 }

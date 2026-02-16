@@ -54,6 +54,7 @@ public class Order extends AuditableEntity {
     @Column(columnDefinition = "TEXT")
     private String note;
 
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(name = "order_status")
     private OrderStatus status = OrderStatus.PENDING;
@@ -72,6 +73,5 @@ public class Order extends AuditableEntity {
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private Set<Review> reviews = new HashSet<>();
-
 
 }

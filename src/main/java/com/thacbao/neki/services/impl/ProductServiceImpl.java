@@ -1,4 +1,5 @@
 package com.thacbao.neki.services.impl;
+
 import com.thacbao.neki.dto.request.product.ProductFilterRequest;
 import com.thacbao.neki.dto.request.product.ProductImageRequest;
 import com.thacbao.neki.dto.request.product.ProductRequest;
@@ -12,9 +13,11 @@ import com.thacbao.neki.repositories.elasticsearch.ProductElasticsearchRepositor
 import com.thacbao.neki.repositories.jpa.*;
 import com.thacbao.neki.services.CloudinaryService;
 import com.thacbao.neki.services.ProductService;
+import com.thacbao.neki.services.RecommendationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.stereotype.Service;
@@ -46,6 +49,7 @@ public class ProductServiceImpl implements ProductService {
     private final CloudinaryService cloudinaryService;
     private final ElasticsearchOperations elasticsearchOperations;
     private final ProductElasticsearchRepository productElasticsearchRepository;
+    private final RecommendationService recommendationService;
 
     @Override
     public ProductDetailResponse createProduct(ProductRequest request) {
@@ -88,26 +92,24 @@ public class ProductServiceImpl implements ProductService {
         // them collection nếu có
         if (request.getCollectionIds() != null && !request.getCollectionIds().isEmpty()) {
             Set<Collection> collections = new HashSet<>(
-                    collectionRepository.findAllById(request.getCollectionIds())
-            );
+                    collectionRepository.findAllById(request.getCollectionIds()));
             product.setCollections(collections);
         }
         // them topic nếu có
         if (request.getTopicIds() != null && !request.getTopicIds().isEmpty()) {
             Set<Topic> topics = new HashSet<>(
-                    topicRepository.findAllById(request.getTopicIds())
-            );
+                    topicRepository.findAllById(request.getTopicIds()));
             product.setTopics(topics);
         }
 
         product = productRepository.save(product);
-        //thêm varient nếu có
+        // thêm varient nếu có
         if (request.getVariants() != null && !request.getVariants().isEmpty()) {
             for (ProductVariantRequest variantReq : request.getVariants()) {
                 createVariantForProduct(product, variantReq);
             }
         }
-        //thêm ảnh
+        // thêm ảnh
         if (request.getImages() != null && !request.getImages().isEmpty()) {
             for (ProductImageRequest imageReq : request.getImages()) {
                 addImageToProduct(product, imageReq);
@@ -172,16 +174,14 @@ public class ProductServiceImpl implements ProductService {
         // update collections
         if (request.getCollectionIds() != null) {
             Set<Collection> collections = new HashSet<>(
-                    collectionRepository.findAllById(request.getCollectionIds())
-            );
+                    collectionRepository.findAllById(request.getCollectionIds()));
             product.setCollections(collections);
         }
 
         // Update topics
         if (request.getTopicIds() != null) {
             Set<Topic> topics = new HashSet<>(
-                    topicRepository.findAllById(request.getTopicIds())
-            );
+                    topicRepository.findAllById(request.getTopicIds()));
             product.setTopics(topics);
         }
 
@@ -257,7 +257,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductImageResponse addProductImage(Integer productId, MultipartFile file,
-                                                Integer colorId, Integer displayOrder, Boolean isPrimary) {
+            Integer colorId, Integer displayOrder, Boolean isPrimary) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
 
@@ -341,15 +341,12 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy ảnh"));
 
         // Unset other primary images
-        imageRepository.findByProductOrderByDisplayOrder(image.getProduct())
-                .forEach(img -> {
-                    img.setIsPrimary(false);
-                    imageRepository.save(img);
-                });
+        List<ProductImage> allImages = imageRepository.findByProductOrderByDisplayOrder(image.getProduct());
+        allImages.forEach(img -> img.setIsPrimary(false));
 
         // Set this as primary
         image.setIsPrimary(true);
-        imageRepository.save(image);
+        imageRepository.saveAll(allImages);
 
         log.info("Primary image set: {}", imageId);
     }
@@ -392,7 +389,8 @@ public class ProductServiceImpl implements ProductService {
             variant.setSize(size);
         }
 
-        variant.setAdditionalPrice(request.getAdditionalPrice() != null ? request.getAdditionalPrice() : variant.getAdditionalPrice());
+        variant.setAdditionalPrice(
+                request.getAdditionalPrice() != null ? request.getAdditionalPrice() : variant.getAdditionalPrice());
         variant.setIsActive(request.getIsActive() != null ? request.getIsActive() : variant.getIsActive());
 
         variant = variantRepository.save(variant);
@@ -434,10 +432,10 @@ public class ProductServiceImpl implements ProductService {
                 .collect(Collectors.toList());
     }
 
-// Inventory Management
+    // Inventory Management
     /**
      * update kho hàng
-     * */
+     */
     @Override
     public void updateInventory(Integer variantId, Integer quantity) {
         ProductVariant variant = variantRepository.findById(variantId)
@@ -452,9 +450,10 @@ public class ProductServiceImpl implements ProductService {
 
         log.info("Inventory updated for variant {}: {} units", variantId, quantity);
     }
+
     /**
      * Giữ hàng tạm thời
-     * */
+     */
     @Override
     public void reserveInventory(Integer variantId, Integer quantity) {
         ProductVariant variant = variantRepository.findById(variantId)
@@ -488,8 +487,8 @@ public class ProductServiceImpl implements ProductService {
     }
 
     /**
-     * Trả lại hàng đã giữ (khi hủy / timeout)
-     * */
+     * tra hang khi huy order
+     */
     @Override
     public void releaseInventory(Integer variantId, Integer quantity) {
         ProductVariant variant = variantRepository.findById(variantId)
@@ -500,6 +499,8 @@ public class ProductServiceImpl implements ProductService {
 
         // tang lai so sp
         inventory.setQuantity(inventory.getQuantity() + quantity);
+        // giam reserved quantity
+        inventory.setReservedQuantity(Math.max(0, inventory.getReservedQuantity() - quantity));
 
         inventoryRepository.save(inventory);
 
@@ -508,7 +509,7 @@ public class ProductServiceImpl implements ProductService {
 
     /**
      * Trừ kho thật
-     * */
+     */
     @Override
     public void confirmInventory(Integer variantId, Integer quantity) {
         ProductVariant variant = variantRepository.findById(variantId)
@@ -518,11 +519,9 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy kho hàng"));
 
         inventory.setReservedQuantity(
-                Math.max(0, inventory.getReservedQuantity() - quantity)
-        );
+                Math.max(0, inventory.getReservedQuantity() - quantity));
         inventory.setQuantity(
-                Math.max(0, inventory.getQuantity() - quantity)
-        );
+                Math.max(0, inventory.getQuantity() - quantity));
 
         inventoryRepository.save(inventory);
 
@@ -531,7 +530,7 @@ public class ProductServiceImpl implements ProductService {
 
     /**
      * nhập thêm số lượng
-     * */
+     */
     @Override
     public void adjustInventory(Integer variantId, Integer quantity, String reason) {
         ProductVariant variant = variantRepository.findById(variantId)
@@ -548,7 +547,7 @@ public class ProductServiceImpl implements ProductService {
                 variantId, oldQuantity, inventory.getQuantity(), reason);
     }
 
-// Public API
+    // Public API
 
     @Override
     @Transactional
@@ -567,7 +566,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public ProductDetailResponse getProductBySlug(String slug) {
         Product product = productRepository.findBySlug(slug)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -596,9 +595,8 @@ public class ProductServiceImpl implements ProductService {
             return Page.empty();
         }
 
-        // Use Elasticsearch for full-text search
         try {
-            // Simple implementation - you may need to adjust based on your Elasticsearch setup
+            // setup
             Page<Product> products = productElasticsearchRepository.searchProducts(keyword, pageable);
             return products.map(ProductListResponse::from);
         } catch (Exception e) {
@@ -613,6 +611,25 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductListResponse> getRelatedProducts(Integer productId, int limit) {
+        // Try getting collaborative filtering recommendations first
+        Page<ProductListResponse> recommendations = recommendationService.getSimilarProducts(
+                productId, PageRequest.of(0, limit));
+
+        if (!recommendations.isEmpty()) {
+            return recommendations.stream()
+                    .map(pr -> ProductListResponse.builder()
+                            .id(pr.getId())
+                            .name(pr.getName())
+                            .slug(pr.getSlug())
+                            .basePrice(pr.getBasePrice())
+                            .salePrice(pr.getSalePrice())
+                            .averageRating(pr.getAverageRating())
+                            .reviewCount(pr.getReviewCount())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
+        // Fallback to category-based related products
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
 
@@ -624,7 +641,7 @@ public class ProductServiceImpl implements ProductService {
                 .collect(Collectors.toList());
     }
 
-//Special Listings
+    // Special Listings
 
     @Override
     @Transactional(readOnly = true)
@@ -654,7 +671,7 @@ public class ProductServiceImpl implements ProductService {
         return products.map(ProductListResponse::from);
     }
 
-// Filter Options
+    // Filter Options
 
     @Override
     @Transactional(readOnly = true)
@@ -707,7 +724,7 @@ public class ProductServiceImpl implements ProductService {
         return builder.build();
     }
 
-// ========== Bulk Operations ==========
+    // ========== Bulk Operations ==========
 
     @Override
     public void bulkUpdateStatus(List<Integer> productIds, boolean isActive) {
@@ -715,9 +732,9 @@ public class ProductServiceImpl implements ProductService {
 
         products.forEach(product -> {
             product.setIsActive(isActive);
-            productRepository.save(product);
             indexProductToElasticsearch(product);
         });
+        productRepository.saveAll(products);
 
         log.info("Bulk status update: {} products {}", productIds.size(), isActive ? "activated" : "deactivated");
     }
@@ -834,4 +851,3 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 }
-

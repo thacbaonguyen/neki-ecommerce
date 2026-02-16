@@ -34,7 +34,6 @@ public class CartServiceImpl implements CartService {
 
 
     @Override
-    @Transactional
     public CartResponse addProductToCart(CartRequest request) {
         log.info("add product variant with id {} to cart", request.getVariantId());
         User user = getCurrentUser();
@@ -76,7 +75,6 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    @Transactional
     public void removeProductFromCart(Integer cartItemId) {
         log.info("remove product variant with id {} from cart", cartItemId);
         User user = getCurrentUser();
@@ -93,7 +91,6 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    @Transactional
     public void changeQuantity(Integer cartItemId, Integer quantityDelta) {
         log.info("change quantity by {} for cart item {}", quantityDelta, cartItemId);
 
@@ -128,7 +125,6 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    @Transactional
     public void updateProductQuantity(Integer cartItemId, Integer quantity) {
         log.info("update product quantity for cart item {} from cart", cartItemId);
         if (quantity <= 0 || quantity >= 1000){

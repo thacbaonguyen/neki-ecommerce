@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -132,12 +133,12 @@ public class Product extends AuditableEntity {
     }
 
     public BigDecimal getDiscountPercentage() {
-        if (!isOnSale()) return BigDecimal.ZERO;
+        if (!isOnSale())
+            return BigDecimal.ZERO;
         return basePrice.subtract(salePrice)
-                .divide(basePrice, 2, BigDecimal.ROUND_HALF_UP)
+                .divide(basePrice, 2, RoundingMode.HALF_UP)
                 .multiply(BigDecimal.valueOf(100));
     }
-
 
     public enum Gender {
         MEN("Men"),

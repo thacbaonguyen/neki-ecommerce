@@ -55,7 +55,6 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    @Transactional
     public void handlePayOSWebhook(WebhookData data) {
         log.info("Handling PayOS Webhook for order: {}", data.getOrderCode());
         Payment payment = paymentRepository.findByOrderOrderNumber(String.valueOf(data.getOrderCode()))

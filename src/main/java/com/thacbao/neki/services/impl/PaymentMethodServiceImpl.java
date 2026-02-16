@@ -39,6 +39,7 @@ public class PaymentMethodServiceImpl implements PaymentMethodService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<PaymentMethodResponse> getAll() {
         return paymentMethodRepository.findAll().stream().map(PaymentMethodResponse::from).collect(Collectors.toList());
     }

@@ -2,9 +2,7 @@ package com.thacbao.neki.model;
 
 import com.thacbao.neki.enums.DiscountType;
 import com.thacbao.neki.model.base.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -17,7 +15,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class Discount extends BaseEntity {
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String name;
 
     @Column
@@ -26,14 +24,34 @@ public class Discount extends BaseEntity {
     @Column(name = "reduce_amount")
     private BigDecimal reduceAmount;
 
-    @Column(nullable = false)
-    private String description;
-
     @Builder.Default
-    @Column(name = "discount_type",nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "discount_type", nullable = false)
     private DiscountType discountType = DiscountType.AMOUNT;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
     @Column(name = "is_active")
     @Builder.Default
     private boolean isActive = true;
+
+    @Column(name = "usage_limit")
+    private Integer usageLimit;
+
+    @Builder.Default
+    @Column(name = "used_count")
+    private Integer usedCount = 0;
+
+    @Column(name = "user_usage_limit")
+    private Integer userUsageLimit;
+
+    @Column(name = "min_order_amount")
+    private BigDecimal minOrderAmount;
+
+    @Column(name = "start_date")
+    private java.time.LocalDate startDate;
+
+    @Column(name = "end_date")
+    private java.time.LocalDate endDate;
 }
