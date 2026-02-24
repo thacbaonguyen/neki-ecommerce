@@ -6,6 +6,7 @@ import com.thacbao.neki.dto.response.TokenResponse;
 import com.thacbao.neki.dto.response.UserResponseDTO;
 import com.thacbao.neki.services.UserService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -14,11 +15,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -48,18 +52,36 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<TokenResponse>> login(
             @Valid @RequestBody UserLoginRequest request,
-            HttpServletRequest httpRequest) {
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
 
         String deviceInfo = httpRequest.getHeader("User-Agent");
         String ipAddress = getClientIp(httpRequest);
 
         TokenResponse tokens = userService.login(request, deviceInfo, ipAddress);
 
+        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokens.getRefreshToken())
+                .httpOnly(true)
+                .secure(false)
+                .path("/api/v1/auth")
+                .maxAge(Duration.ofDays(7))
+                .sameSite("Strict")
+                .build();
+
+        httpResponse.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+
+        TokenResponse safeResponse = TokenResponse.builder()
+                .accessToken(tokens.getAccessToken())
+                .tokenType(tokens.getTokenType())
+                .expiresIn(tokens.getExpiresIn())
+                .user(tokens.getUser())
+                .build();
+
         ApiResponse<TokenResponse> response = ApiResponse.<TokenResponse>builder()
                 .code(HttpStatus.OK.value())
                 .status("success")
                 .message("Đăng nhập thành công")
-                .data(tokens)
+                .data(safeResponse)
                 .build();
 
         return ResponseEntity.ok(response);
@@ -195,19 +217,45 @@ public class UserController {
 
     @PostMapping("/refresh-token")
     public ResponseEntity<ApiResponse<TokenResponse>> refreshToken(
-            @RequestParam @NotBlank(message = "Refresh token không được để trống") String refreshToken,
-            HttpServletRequest httpRequest) {
+            @CookieValue(name = "refreshToken", required = false) String refreshToken,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+
+        if (refreshToken == null || refreshToken.isBlank()) {
+            ApiResponse<TokenResponse> errorResponse = ApiResponse.<TokenResponse>builder()
+                    .code(HttpStatus.UNAUTHORIZED.value())
+                    .status("error")
+                    .message("Refresh token không tồn tại")
+                    .build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+        }
 
         String deviceInfo = httpRequest.getHeader("User-Agent");
         String ipAddress = getClientIp(httpRequest);
 
         TokenResponse tokens = userService.refreshToken(refreshToken, deviceInfo, ipAddress);
 
+        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokens.getRefreshToken())
+                .httpOnly(true)
+                .secure(false)
+                .path("/api/v1/auth")
+                .maxAge(Duration.ofDays(7))
+                .sameSite("Strict")
+                .build();
+
+        httpResponse.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+
+        TokenResponse safeResponse = TokenResponse.builder()
+                .accessToken(tokens.getAccessToken())
+                .tokenType(tokens.getTokenType())
+                .expiresIn(tokens.getExpiresIn())
+                .build();
+
         ApiResponse<TokenResponse> response = ApiResponse.<TokenResponse>builder()
                 .code(HttpStatus.OK.value())
                 .status("success")
                 .message("Token đã được làm mới")
-                .data(tokens)
+                .data(safeResponse)
                 .build();
 
         return ResponseEntity.ok(response);
