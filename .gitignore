@@ -36,3 +36,6 @@ build/
 .mvn
 .gitattributes
 .gitignore
+
+dump.rdb
+task.md
