@@ -54,10 +54,13 @@ public class SecurityConfig {
                         "/api/v1/catalog/**",
                         // PayOS webhook endpoint
                         "/payment/**",
-                        //tracking order
+                        // tracking order
                         "/api/v1/order/tracking",
-                //review prduct
-                "/api/v1/review/all-review",
+                        // review prduct
+                        "/api/v1/review/all-review",
+                        // Actuator endpoints for Prometheus monitoring
+                        "/actuator/prometheus",
+                        "/actuator/health",
         };
 
         private static final String[] ADMIN_MATCHERS = {
@@ -67,7 +70,8 @@ public class SecurityConfig {
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
                 http.cors(cors -> cors.configurationSource(WebConfig.corsConfigurationSource()))
-                        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .csrf(AbstractHttpConfigurer::disable)
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers(PUBLIC_MATCHERS).permitAll()

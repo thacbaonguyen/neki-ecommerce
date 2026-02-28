@@ -60,7 +60,11 @@ public class RateLimitIPtFilter extends OncePerRequestFilter {
         }
 
         if (path.startsWith("/api/v1/auth/forgot-password")) {
-            return new RateLimitRule(3, Duration.ofMinutes(5), "forgot-ip:");
+            return new RateLimitRule(1, Duration.ofMinutes(3), "forgot-ip:");
+        }
+
+        if (path.startsWith("/api/v1/auth/signup")) {
+            return new RateLimitRule(1, Duration.ofMinutes(1), "signup-ip:");
         }
 
         if (path.startsWith("/api/v1/search/products")) {
