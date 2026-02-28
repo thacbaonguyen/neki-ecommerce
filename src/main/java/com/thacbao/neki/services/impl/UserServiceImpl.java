@@ -63,8 +63,13 @@ public class UserServiceImpl implements UserService {
     public void register(UserRegisterRequest request) {
         log.info("Registering new user with email: {}", request.getEmail());
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new AlreadyException("Email đã được sử dụng");
+        Optional<User> userOptional = userRepository.findByEmailSimple(request.getEmail());
+        if (userOptional.isPresent()) {
+            if (!userOptional.get().getEmailVerified()) {
+                userRepository.deleteByIdDirect(userOptional.get().getId());
+            } else {
+                throw new AlreadyException("Email đã được sử dụng");
+            }
         }
 
         // Validate phone

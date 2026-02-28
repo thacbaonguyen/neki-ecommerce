@@ -23,8 +23,10 @@ public class UserRegisterRequest {
     @Size(min = 2, max = 100, message = "Họ tên từ 2-100 ký tự")
     private String fullName;
 
-    @Size(min = 10, max = 20, message = "SĐT từ 10-20 ký tự")
-    @Pattern(regexp = "^[0-9+\\-\\s()]+$", message = "SĐT chỉ chứa số và ký tự đặc biệt")
+    @Size(min = 10, max = 14, message = "SDT không hợp lệ")
+
+    @NotBlank(message = "SDT không được để trống")
+    @Pattern(regexp = "^[0-9+\\-\\s()]+$", message = "SĐT chỉ chứa số")
     private String phone;
 
     @NotBlank(message = "Mật khẩu không được để trống")
