@@ -1,0 +1,30 @@
+#where to scrape for prometheus
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    project: 'neki-ecommerce'
+
+scrape_configs:
+
+  # traffic, response time. DB pool
+  - job_name: 'neki-spring-boot'
+    scrape_interval: 15s
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+        labels:
+          service: 'neki-api'
+          env: 'local'
+
+  #CPU, RAM, Disk, Network
+  - job_name: 'node-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'host-machine'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
