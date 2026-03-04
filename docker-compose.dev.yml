@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: neki-dev
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/neki_ecommerce
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
+    networks:
+      - neki-network
+    depends_on:
+      - mysql
+      - redis
+      - elasticsearch
+
+  mysql:
+    image: mysql:8
+    container_name: mysql-dev
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: neki_ecommerce
+    volumes:
+      - ./mysql-data:/var/lib/mysql:Z
+    networks:
+      - neki-network
+
+  redis:
+    image: redis:8.0.6-alpine
+    container_name: redis-dev
+    ports:
+      - "6380:6379"
+    networks:
+      - neki-network
+
+  elasticsearch:
+    image: elasticsearch:8.18.0
+    container_name: elastic-dev
+    ports:
+      - "9200:9200"
+    networks:
+      - neki-network
+
+networks:
+  neki-network:
+    driver: bridge
