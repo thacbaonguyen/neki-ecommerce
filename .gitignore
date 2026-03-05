@@ -39,3 +39,4 @@ build/
 
 dump.rdb
 task.md
+/mysql-data/

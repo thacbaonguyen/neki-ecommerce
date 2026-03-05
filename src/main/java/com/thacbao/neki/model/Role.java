@@ -1,5 +1,6 @@
 package com.thacbao.neki.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.thacbao.neki.model.base.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -27,5 +28,6 @@ public class Role extends BaseEntity {
 
     @Builder.Default
     @ManyToMany(mappedBy = "roles")
+    @JsonIgnore
     private Set<User> users = new HashSet<>();
 }

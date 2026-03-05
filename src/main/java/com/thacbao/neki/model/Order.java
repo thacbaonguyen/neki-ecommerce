@@ -1,5 +1,6 @@
 package com.thacbao.neki.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.thacbao.neki.enums.OrderStatus;
 import com.thacbao.neki.model.base.AuditableEntity;
 import jakarta.persistence.*;
@@ -20,6 +21,7 @@ public class Order extends AuditableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
 
     @Column(name = "order_number", nullable = false, unique = true, length = 50)
