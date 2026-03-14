@@ -290,6 +290,27 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public OrderResponse updateOrderStatus(String orderNumber, String status) {
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new NotFoundException(MessageKey.ORDER_NOT_FOUND));
+
+        OrderStatus newStatus = parseOrderStatus(status);
+
+        validateStatusTransition(order.getStatus(), newStatus);
+        // Confirm inventory chỉ khi chuyển từ PENDING → CONFIRMED (COD)
+        if (OrderStatus.CONFIRMED.equals(newStatus) && OrderStatus.PENDING.equals(order.getStatus())) {
+            for (OrderItem item : order.getOrderItems()) {
+                productService.confirmInventory(item.getVariant().getId(), item.getQuantity());
+            }
+        }
+        order.setStatus(newStatus);
+        orderRepository.save(order);
+
+        log.info("Order {} status updated to {}", orderNumber, newStatus);
+        return OrderResponse.from(order);
+    }
+
+    @Override
     public OrderResponse markAsDelivered(Integer orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException(MessageKey.ORDER_NOT_FOUND));
@@ -482,6 +503,7 @@ public class OrderServiceImpl implements OrderService {
                     .variant(variant)
                     .quantity(item.getQuantity())
                     .unitPrice(price)
+                    .totalPrice(itemTotal)
                     .build();
             orderItems.add(orderItem);
         }
@@ -534,7 +556,7 @@ public class OrderServiceImpl implements OrderService {
             productService.reserveInventory(orderItem.getVariant().getId(), orderItem.getQuantity());
         }
         orderItemRepository.saveAll(orderItems);
-        order.setOrderItems(new HashSet<>(orderItems));
+        order.getOrderItems().addAll(orderItems);
 
         log.info("Order {} created for user {} with {} items, total: {}",
                 order.getOrderNumber(), user.getId(), orderItems.size(), finalAmount);

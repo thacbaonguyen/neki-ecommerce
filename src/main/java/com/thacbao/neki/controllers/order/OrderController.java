@@ -73,9 +73,21 @@ public class OrderController {
         );
     }
 
-    @GetMapping("/{orderNumber}")
+    @GetMapping("/number/{orderNumber}")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrderByOrderNumber(@PathVariable("orderNumber") String orderNumber) {
         OrderResponse orderResponse = orderService.getOrderByOrderNumber(orderNumber);
+        return ResponseEntity.ok(
+                ApiResponse.<OrderResponse>builder()
+                        .code(200)
+                        .status("success")
+                        .data(orderResponse)
+                        .build()
+        );
+    }
+
+    @PutMapping("/confirm/{orderNumber}")
+    public ResponseEntity<ApiResponse<OrderResponse>> confirmOrder(@PathVariable("orderNumber") String orderNumber) {
+        OrderResponse orderResponse = orderService.updateOrderStatus(orderNumber, "confirmed");
         return ResponseEntity.ok(
                 ApiResponse.<OrderResponse>builder()
                         .code(200)

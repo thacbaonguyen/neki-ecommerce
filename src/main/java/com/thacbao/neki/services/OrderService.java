@@ -80,6 +80,8 @@ public interface OrderService {
      */
     OrderResponse updateOrderStatus(Integer orderId, String status);
 
+    OrderResponse updateOrderStatus(String orderNumber, String status);
+
     /**
      * Mark order as delivered
      */
