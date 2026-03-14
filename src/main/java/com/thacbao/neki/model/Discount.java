@@ -18,6 +18,9 @@ public class Discount extends BaseEntity {
     @Column(nullable = false, unique = true)
     private String name;
 
+    @Column(nullable = false, unique = true)
+    private String code;
+
     @Column
     private Integer percent;
 

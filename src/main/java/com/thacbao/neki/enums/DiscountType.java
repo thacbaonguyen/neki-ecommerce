@@ -11,7 +11,7 @@ public enum DiscountType {
 
     public static DiscountType fromValue(String value) {
         for(DiscountType item : values()) {
-            if (item.value.equals(value.toUpperCase())) {
+            if (item.value.equalsIgnoreCase(value)) {
                 return item;
             }
         }

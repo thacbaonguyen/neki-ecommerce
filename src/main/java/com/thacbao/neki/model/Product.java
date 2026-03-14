@@ -29,6 +29,9 @@ public class Product extends AuditableEntity {
     @Column(nullable = false)
     private String name;
 
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String excerpt;
+
     @Column(nullable = false, unique = true)
     private String slug;
 
@@ -43,7 +46,6 @@ public class Product extends AuditableEntity {
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM('Men', 'Women', 'Unisex', 'Kids')")
     private Gender gender = Gender.UNISEX;
 
     @Builder.Default

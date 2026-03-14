@@ -1,5 +1,6 @@
 package com.thacbao.neki.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.thacbao.neki.model.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -51,6 +52,7 @@ public class SubCategory extends BaseEntity {
 
     @Builder.Default
     @OneToMany(mappedBy = "subCategory", cascade = CascadeType.ALL)
+    @JsonIgnore
     private Set<Product> products = new HashSet<>();
 
     @Builder.Default
