@@ -1,5 +1,13 @@
 package com.thacbao.neki.services.impl;
 
+import co.elastic.clients.elasticsearch._types.FieldValue;
+import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
+import co.elastic.clients.elasticsearch._types.query_dsl.UntypedRangeQuery;
+import co.elastic.clients.json.JsonData;
+import com.thacbao.neki.documents.ProductDocument;
 import com.thacbao.neki.dto.request.product.ProductFilterRequest;
 import com.thacbao.neki.dto.request.product.ProductImageRequest;
 import com.thacbao.neki.dto.request.product.ProductRequest;
@@ -11,21 +19,29 @@ import com.thacbao.neki.model.*;
 import com.thacbao.neki.model.Collection;
 import com.thacbao.neki.repositories.elasticsearch.ProductElasticsearchRepository;
 import com.thacbao.neki.repositories.jpa.*;
+import com.thacbao.neki.security.SecurityUtils;
 import com.thacbao.neki.services.CloudinaryService;
 import com.thacbao.neki.services.ProductService;
 import com.thacbao.neki.services.RecommendationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -58,9 +74,6 @@ public class ProductServiceImpl implements ProductService {
         SubCategory subCategory = subCategoryRepository.findById(request.getSubCategoryId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy danh mục con"));
 
-        if (!subCategory.isLeaf()) {
-            throw new InvalidException("Sản phẩm phải thuộc danh mục cuối cùng");
-        }
 
         Brand brand = brandRepository.findById(request.getBrandId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy brand"));
@@ -77,6 +90,7 @@ public class ProductServiceImpl implements ProductService {
                 .subCategory(subCategory)
                 .brand(brand)
                 .name(request.getName())
+                .excerpt(request.getExcerpt())
                 .slug(slug)
                 .description(request.getDescription())
                 .basePrice(request.getBasePrice())
@@ -109,14 +123,10 @@ public class ProductServiceImpl implements ProductService {
                 createVariantForProduct(product, variantReq);
             }
         }
-        // thêm ảnh
-        if (request.getImages() != null && !request.getImages().isEmpty()) {
-            for (ProductImageRequest imageReq : request.getImages()) {
-                addImageToProduct(product, imageReq);
-            }
-        }
 
-        indexProductToElasticsearch(product);
+        indexProductToElasticsearch(productRepository.findById(product.getId()).orElseThrow(
+                () -> new NotFoundException("Cannot found this product")
+        ));
 
         log.info("Created: {})", product.getName());
 
@@ -139,6 +149,7 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
+        product.setExcerpt(request.getExcerpt());
         product.setDescription(request.getDescription());
         product.setBasePrice(request.getBasePrice());
         product.setSalePrice(request.getSalePrice());
@@ -209,7 +220,7 @@ public class ProductServiceImpl implements ProductService {
 
         // delete from elastic
         try {
-            elasticsearchOperations.delete(id.toString(), Product.class);
+            elasticsearchOperations.delete(id.toString(), ProductDocument.class);
         } catch (Exception e) {
             log.error("Failed to delete from Elasticsearch: {}", id, e);
         }
@@ -231,7 +242,7 @@ public class ProductServiceImpl implements ProductService {
         if (isActive) {
             indexProductToElasticsearch(product);
         } else {
-            elasticsearchOperations.delete(id.toString(), Product.class);
+            elasticsearchOperations.delete(id.toString(), ProductDocument.class);
         }
 
         log.info("Product {} status: {}", id, isActive ? "activated" : "deactivated");
@@ -282,6 +293,26 @@ public class ProductServiceImpl implements ProductService {
         log.info("Image added to product {}", productId);
 
         return ProductImageResponse.from(savedImage);
+    }
+
+    @Override
+    public List<ProductImageResponse> addProductImages(Integer productId, List<MultipartFile> files, List<Integer> colorIds, List<Integer> displayOrders, List<Boolean> isPrimaries) {
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("Danh sách file không được rỗng");
+        }
+
+        List<ProductImageResponse> results = new ArrayList<>();
+
+        for (int i = 0; i < files.size(); i++) {
+            Integer colorId      = (colorIds != null && i < colorIds.size())      ? colorIds.get(i)      : null;
+            Integer displayOrder = (displayOrders != null && i < displayOrders.size()) ? displayOrders.get(i) : 0;
+            Boolean isPrimary    = (isPrimaries != null && i < isPrimaries.size()) ? isPrimaries.get(i)   : false;
+
+            ProductImageResponse image = addProductImage(productId, files.get(i), colorId, displayOrder, isPrimary);
+            results.add(image);
+        }
+
+        return results;
     }
 
     @Override
@@ -566,7 +597,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public ProductDetailResponse getProductBySlug(String slug) {
         Product product = productRepository.findBySlug(slug)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -581,6 +612,7 @@ public class ProductServiceImpl implements ProductService {
         return ProductDetailResponse.from(product);
     }
 
+    // fallback like trong db khi es loi~
     @Override
     @Transactional(readOnly = true)
     public Page<ProductListResponse> filterProducts(ProductFilterRequest filter, Pageable pageable) {
@@ -590,20 +622,38 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ProductListResponse> searchProducts(String keyword, Pageable pageable) {
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return Page.empty();
-        }
+    public Page<ProductListResponse> searchProducts(ProductFilterRequest filter, Pageable pageable) {
 
         try {
             // setup
-            Page<Product> products = productElasticsearchRepository.searchProducts(keyword, pageable);
-            return products.map(ProductListResponse::from);
+            NativeQuery query = buildElasticsearchQuery(filter, pageable);
+            SearchHits<ProductDocument> searchHits = elasticsearchOperations.search(query, ProductDocument.class);
+
+
+            List<Integer> ids = searchHits.getSearchHits().stream()
+                    .map(hit -> hit.getContent().getId().intValue())
+                    .toList();
+
+
+            if (ids.isEmpty()) {
+                return Page.empty(pageable);
+            }
+
+            // luwu vao map r lay ra sau de giu nguyen thu tu do elas tic sap xep
+            List<Product> products = productRepository.findAllById(ids);
+
+            Map<Integer, Product> productMap = products.stream().collect(Collectors.toMap(Product::getId, p -> p));
+
+            List<ProductListResponse> responses = ids.stream()
+                    .map(productMap::get)
+                    .filter(Objects::nonNull)
+                    .map(ProductListResponse::from)
+                    .collect(Collectors.toList());
+            long total = searchHits.getTotalHits();
+
+            return new PageImpl<>(responses, pageable, total);
         } catch (Exception e) {
-            log.error("Elasticsearch search failed, falling back to database search", e);
-            ProductFilterRequest filter = ProductFilterRequest.builder()
-                    .keyword(keyword)
-                    .build();
+            log.error("Elasticsearch search failed, fallback to DB", e);
             return filterProducts(filter, pageable);
         }
     }
@@ -844,10 +894,208 @@ public class ProductServiceImpl implements ProductService {
 
     private void indexProductToElasticsearch(Product product) {
         try {
-            elasticsearchOperations.save(product);
+            List<Integer> colorIds = product.getVariants().stream()
+                    .map(v -> v.getColor().getId())
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            List<Integer> sizeIds = product.getVariants().stream()
+                    .map(v -> v.getSize().getId())
+                    .distinct()
+                    .toList();
+
+            boolean inStock = product.getVariants().stream()
+                    .anyMatch(v -> v.getInventory().getQuantity() > 0);
+
+            List<Integer> collectionIds = product.getCollections().stream()
+                    .map(Collection::getId)
+                    .toList();
+
+            List<Integer> topicIds = product.getTopics().stream()
+                    .map(Topic::getId)
+                    .toList();
+
+            ProductDocument doc = ProductDocument.builder()
+                    .id(Long.valueOf(product.getId()))
+                    .name(product.getName())
+                    .excerpt(product.getExcerpt())
+                    .description(product.getDescription())
+                    .price(product.getCurrentPrice())
+                    .brandId(product.getBrand().getId())
+                    .categoryId(product.getSubCategory().getCategory().getId())
+                    .subCategoryId(product.getSubCategory().getId())
+                    .collectionIds(collectionIds)
+                    .topicIds(topicIds)
+                    .gender(product.getGender() != null ? product.getGender().name() : null)
+                    .colorIds(colorIds)
+                    .sizeIds(sizeIds)
+                    .isFeatured(product.getIsFeatured())
+                    .isNew(product.getIsNew())
+                    .isActive(product.getIsActive())
+                    .isOnSale(product.isOnSale())
+                    .inStock(inStock)
+                    .viewCount(product.getViewCount())
+                    .totalSold(product.getTotalSold())
+                    .rating(product.getAverageRating().doubleValue())
+                    .createdAt(product.getCreatedAt().toInstant(ZoneOffset.UTC))
+                    .updatedAt(product.getUpdatedAt().toInstant(ZoneOffset.UTC))
+                    .build();
+
+            elasticsearchOperations.save(doc);
             log.info("Product indexed to Elasticsearch: {}", product.getId());
         } catch (Exception e) {
             log.error("Failed to index product to Elasticsearch: {}", product.getId(), e);
         }
+    }
+
+    private NativeQuery buildElasticsearchQuery(ProductFilterRequest filter, Pageable pageable) {
+        BoolQuery.Builder boolQuery = new BoolQuery.Builder();
+
+        // keyword search
+        if (filter.getKeyword() != null && !filter.getKeyword().isBlank()) {
+            String keyword = filter.getKeyword();
+            boolQuery.must(m -> m.bool(b -> b
+                    .should(s -> s.matchPhrase(mp -> mp
+                            .field("name")
+                            .query(keyword)  // ✅ "football shoes" phải xuất hiện liền nhau trong name
+                    ))
+                    .should(s -> s.matchPhrase(mp -> mp
+                            .field("description")
+                            .query(keyword)
+                    ))
+                    .should(s -> s.matchPhrase(mp -> mp
+                            .field("excerpt")
+                            .query(keyword)  // ✅ "football shoes" phải xuất hiện liền nhau trong excerpt
+                    ))
+                    .minimumShouldMatch("1")
+            ));
+        }
+
+        // all if admin
+        if (!SecurityUtils.hasRole("ADMIN")){
+            boolQuery.filter(f -> f.term(t -> t.field("isActive").value(true)));
+        }
+
+        // category
+        if (filter.getCategoryId() != null) {
+
+            boolQuery.filter(f -> f.term(t ->
+                    t.field("categoryId").value(filter.getCategoryId())
+            ));
+        }
+
+        // subcategory
+        if (filter.getSubCategoryId() != null) {
+
+            boolQuery.filter(f -> f.term(t ->
+                    t.field("subCategoryId").value(filter.getSubCategoryId())
+            ));
+        }
+
+        // brand
+        if (filter.getBrandId() != null) {
+
+            boolQuery.filter(f -> f.term(t ->
+                    t.field("brandId").value(filter.getBrandId())
+            ));
+        }
+
+        // collection
+        if (filter.getCollectionId() != null) {
+            boolQuery.filter(f -> f.term(t ->
+                    t.field("collectionIds").value(filter.getCollectionId())
+            ));
+        }
+
+        if (filter.getInStock() != null) {
+            boolQuery.filter(f -> f.term(t ->
+                    t.field("inStock").value(filter.getInStock())
+            ));
+        };
+
+        // topic
+        if (filter.getTopicId() != null) {
+            boolQuery.filter(f -> f.term(t ->
+                    t.field("topicIds").value(filter.getTopicId())
+            ));
+        }
+        // gender
+        if (filter.getGender() != null) {
+            String genderValue = filter.getGender().name().toLowerCase();
+            boolQuery.filter(f -> f.term(t ->
+                    t.field("gender").value(genderValue)
+            ));
+        }
+
+        // colorIds
+        if (filter.getColorIds() != null && !filter.getColorIds().isEmpty()) {
+            List<FieldValue> colorValues = filter.getColorIds().stream()
+                    .map(FieldValue::of)
+                    .toList();
+            boolQuery.filter(f -> f.terms(t -> t
+                    .field("colorIds")
+                    .terms(tv -> tv.value(colorValues))
+            ));
+        }
+
+        // sizeIds
+        if (filter.getSizeIds() != null && !filter.getSizeIds().isEmpty()) {
+            List<FieldValue> sizeValues = filter.getSizeIds().stream()
+                    .map(FieldValue::of)
+                    .toList();
+            boolQuery.filter(f -> f.terms(t -> t
+                    .field("sizeIds")
+                    .terms(tv -> tv.value(sizeValues))
+            ));
+        }
+
+        // featured
+        if (Boolean.TRUE.equals(filter.getIsFeatured())) {
+
+            boolQuery.filter(f -> f.term(t ->
+                    t.field("isFeatured").value(true)
+            ));
+        }
+
+        // new
+        if (Boolean.TRUE.equals(filter.getIsNew())) {
+
+            boolQuery.filter(f -> f.term(t ->
+                    t.field("isNew").value(true)
+            ));
+        }
+
+        // price range
+        if (filter.getMinPrice() != null || filter.getMaxPrice() != null) {
+            boolQuery.filter(f -> f.range(r -> {
+                UntypedRangeQuery.Builder rangeBuilder = new UntypedRangeQuery.Builder()
+                        .field("price");
+
+                if (filter.getMinPrice() != null) {
+                    rangeBuilder.gte(JsonData.of(filter.getMinPrice()));
+                }
+                if (filter.getMaxPrice() != null) {
+                    rangeBuilder.lte(JsonData.of(filter.getMaxPrice()));
+                }
+
+                return r.untyped(rangeBuilder.build());
+            }));
+        }
+
+        Query esQuery = Query.of(q -> q.bool(boolQuery.build()));
+        Pageable esPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+
+        NativeQueryBuilder queryBuilder = new NativeQueryBuilder()
+                .withQuery(esQuery)
+                .withPageable(esPageable);
+
+        if (filter.getSortBy() != null && !filter.getSortBy().isBlank()) {
+            SortOrder order = "asc".equalsIgnoreCase(filter.getSortDirection()) ? SortOrder.Asc : SortOrder.Desc;
+            queryBuilder.withSort(s -> s.field(f -> f.field(filter.getSortBy()).order(order)));
+        }
+        else{
+            queryBuilder.withSort(s -> s.field(f -> f.field("createdAt").order(SortOrder.Desc)));
+        }
+        return queryBuilder.build();
     }
 }

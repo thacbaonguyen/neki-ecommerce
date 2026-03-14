@@ -23,9 +23,16 @@ public interface ProductService {
 
     // Images
     ProductImageResponse addProductImage(Integer productId, MultipartFile file, Integer colorId, Integer displayOrder, Boolean isPrimary);
+
+    List<ProductImageResponse> addProductImages(Integer productId, List<MultipartFile> files,
+                                                List<Integer> colorIds, List<Integer> displayOrders,
+                                                List<Boolean> isPrimaries);
+
     ProductImageResponse addProductImageByUrl(Integer productId, ProductImageRequest request);
+
     void deleteProductImage(Integer imageId);
     void updateImageOrder(Integer productId, List<Integer> imageIds);
+
     void setPrimaryImage(Integer imageId);
 
     // variant
@@ -47,7 +54,7 @@ public interface ProductService {
     ProductDetailResponse getProductBySlug(String slug);
     ProductDetailResponse getProductById(Integer id);
     Page<ProductListResponse> filterProducts(ProductFilterRequest filter, Pageable pageable);
-    Page<ProductListResponse> searchProducts(String keyword, Pageable pageable);
+    Page<ProductListResponse> searchProducts(ProductFilterRequest request, Pageable pageable);
     List<ProductListResponse> getRelatedProducts(Integer productId, int limit);
 
     // page select

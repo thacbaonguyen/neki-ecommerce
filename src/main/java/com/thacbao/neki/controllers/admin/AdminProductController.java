@@ -95,7 +95,7 @@ public class AdminProductController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProductListResponse>>> getAllProducts(
-            ProductFilterRequest filter,
+            @ModelAttribute ProductFilterRequest filter,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<ProductListResponse> products = productService.getAllProductsAdmin(filter, pageable);
         return ResponseEntity.ok(
@@ -107,24 +107,24 @@ public class AdminProductController {
         );
     }
 
-    @PostMapping("/{productId}/images")
-    public ResponseEntity<ApiResponse<ProductImageResponse>> addProductImage(
+    @PostMapping("/{productId}/images/batch")
+    public ResponseEntity<ApiResponse<List<ProductImageResponse>>> addProductImages(
             @PathVariable Integer productId,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam(required = false) Integer colorId,
-            @RequestParam(required = false, defaultValue = "0") Integer displayOrder,
-            @RequestParam(required = false, defaultValue = "false") Boolean isPrimary) {
+            @RequestParam("files") List<MultipartFile> files,
+            @RequestParam(required = false) List<Integer> colorIds,
+            @RequestParam(required = false) List<Integer> displayOrders,
+            @RequestParam(required = false) List<Boolean> isActives) {
 
-        ProductImageResponse image = productService.addProductImage(
-                productId, file, colorId, displayOrder, isPrimary
+        List<ProductImageResponse> images = productService.addProductImages(
+                productId, files, colorIds, displayOrders, isActives
         );
 
         return ResponseEntity.ok(
-                ApiResponse.<ProductImageResponse>builder()
+                ApiResponse.<List<ProductImageResponse>>builder()
                         .code(200)
                         .status("success")
-                        .message("Thêm ảnh thành công")
-                        .data(image)
+                        .message("Thêm " + images.size() + " ảnh thành công")
+                        .data(images)
                         .build()
         );
     }

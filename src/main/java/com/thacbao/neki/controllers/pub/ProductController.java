@@ -27,7 +27,7 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProductListResponse>>> filterProducts(
-            ProductFilterRequest filter,
+            @ModelAttribute ProductFilterRequest filter,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         Page<ProductListResponse> products = productService.filterProducts(filter, pageable);
@@ -98,7 +98,7 @@ public class ProductController {
 
     @GetMapping("/new")
     public ResponseEntity<ApiResponse<Page<ProductListResponse>>> getNewProducts(
-            @PageableDefault(size = 20) Pageable pageable) {
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         Page<ProductListResponse> products = productService.getNewProducts(pageable);
 
