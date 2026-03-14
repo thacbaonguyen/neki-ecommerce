@@ -36,6 +36,6 @@ build/
 .mvn
 .gitattributes
 .gitignore
-
+mysql-data
 dump.rdb
-task.md
+git-push-guide.txt
