@@ -50,4 +50,23 @@ public class PaymentController {
             return response;
         }
     }
+
+    @PostMapping(path = "/confirm")
+    public ObjectNode confirmPayment(@RequestBody ObjectNode body) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode response = objectMapper.createObjectNode();
+        try {
+            String orderCode = body.get("orderCode").asText();
+            paymentService.confirmPayment(orderCode);
+            response.put("error", 0);
+            response.put("message", "Payment confirmed");
+            response.set("data", null);
+            return response;
+        } catch (Exception e) {
+            response.put("error", -1);
+            response.put("message", e.getMessage());
+            response.set("data", null);
+            return response;
+        }
+    }
 }

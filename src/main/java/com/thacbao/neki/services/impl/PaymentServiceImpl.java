@@ -16,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.payos.PayOS;
+import vn.payos.model.v2.paymentRequests.PaymentLink;
 import vn.payos.model.webhooks.WebhookData;
 
 @Service
@@ -27,6 +29,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMethodRepository paymentMethodRepository;
     private final com.thacbao.neki.repositories.jpa.OrderRepository orderRepository;
     private final ProductService productService;
+    private final PayOS payOS;
     private static final String PAYOS_SUCCESS_CODE = "00";
 
     @Override
@@ -85,5 +88,42 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         paymentRepository.save(payment);
+    }
+
+    @Override
+    public void confirmPayment(String orderNumber) {
+        Payment payment = paymentRepository.findByOrderOrderNumber(orderNumber)
+                .orElseThrow(() -> new NotFoundException("Payment for order " + orderNumber + " not found"));
+
+        // Idempotent: skip if already paid
+        if (payment.getStatus() == PaymentStatus.PAID) {
+            log.info("Payment for order {} already confirmed, skipping", orderNumber);
+            return;
+        }
+
+        try {
+            // Verify with PayOS API
+            PaymentLink paymentInfo = payOS.paymentRequests().get(Long.parseLong(orderNumber));
+            if ("PAID".equals(String.valueOf(paymentInfo.getStatus()))) {
+                payment.setStatus(PaymentStatus.PAID);
+                payment.setPaidAt(java.time.LocalDateTime.now());
+
+                Order order = payment.getOrder();
+                order.setStatus(com.thacbao.neki.enums.OrderStatus.CONFIRMED);
+                orderRepository.save(order);
+
+                for (OrderItem item : order.getOrderItems()) {
+                    productService.confirmInventory(item.getVariant().getId(), item.getQuantity());
+                }
+
+                paymentRepository.save(payment);
+                log.info("Order {} confirmed via returnUrl callback", orderNumber);
+            } else {
+                log.warn("PayOS status for order {} is {}, not PAID", orderNumber, paymentInfo.getStatus());
+            }
+        } catch (Exception e) {
+            log.error("Error verifying payment for order {}: {}", orderNumber, e.getMessage());
+            throw new RuntimeException("Failed to verify payment with PayOS", e);
+        }
     }
 }

@@ -10,4 +10,6 @@ public interface PaymentService {
     PaymentResponse update(Integer paymentId, PaymentStatus status);
 
     void handlePayOSWebhook(vn.payos.model.webhooks.WebhookData data);
+
+    void confirmPayment(String orderNumber);
 }

@@ -50,7 +50,7 @@ public class PaymentLinkServiceImpl implements PaymentLinkService {
                             + order.getProvince())
                     .returnUrl(returnUrl)
                     .cancelUrl(cancelUrl)
-                    .expiredAt(1000 * 60 * 10L)
+                    .expiredAt(System.currentTimeMillis() / 1000 + 600)
                     .build();
 
             CreatePaymentLinkResponse paymentLinkResponse = payOS.paymentRequests().create(paymentLinkRequest);
