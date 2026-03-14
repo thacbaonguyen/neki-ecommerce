@@ -28,6 +28,9 @@ public class ProductRequest {
     @Size(max = 255, message = "Tên sản phẩm tối đa 255 ký tự")
     private String name;
 
+    @Size(max = 100, message = "excerpt sản phẩm tối đa 100 ký tự")
+    private String excerpt;
+
     @Size(max = 2000, message = "Mô tả tối đa 2000 ký tự")
     private String description;
 
@@ -59,5 +62,4 @@ public class ProductRequest {
     private Set<Integer> topicIds;
 
     private List<ProductVariantRequest> variants;
-    private List<ProductImageRequest> images;
 }

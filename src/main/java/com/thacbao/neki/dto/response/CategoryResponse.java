@@ -45,7 +45,6 @@ public class CategoryResponse {
         if (category.getSubCategories() != null) {
             response.setSubCategories(
                     category.getSubCategories().stream()
-                            .filter(SubCategory::getIsActive)
                             .filter(sc -> sc.getParent() == null)
                             .sorted(Comparator.comparing(SubCategory::getDisplayOrder))
                             .map(SubCategoryResponse::fromWithChildren)

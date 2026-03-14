@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 public class ProductDetailResponse {
     private Integer id;
     private String name;
+    private String excerpt;
     private String slug;
     private String description;
     private SubCategoryResponse subCategory;
@@ -59,6 +60,7 @@ public class ProductDetailResponse {
         return ProductDetailResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
+                .excerpt(product.getExcerpt())
                 .slug(product.getSlug())
                 .description(product.getDescription())
                 .subCategory(SubCategoryResponse.from(product.getSubCategory()))

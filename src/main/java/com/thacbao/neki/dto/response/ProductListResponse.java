@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 public class ProductListResponse {
     private Integer id;
     private String name;
+    private String excerpt;
     private String slug;
     private String categoryName;
     private String subCategoryName;
@@ -31,6 +32,7 @@ public class ProductListResponse {
     private String gender;
     private Boolean isFeatured;
     private Boolean isNew;
+    private Boolean isActive;
     private String primaryImage;
     private BigDecimal averageRating;
     private Integer reviewCount;
@@ -42,6 +44,7 @@ public class ProductListResponse {
         return ProductListResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
+                .excerpt(product.getExcerpt())
                 .slug(product.getSlug())
                 .categoryName(product.getSubCategory().getCategory().getName())
                 .subCategoryName(product.getSubCategory().getName())
@@ -54,12 +57,14 @@ public class ProductListResponse {
                 .gender(product.getGender().getValue())
                 .isFeatured(product.getIsFeatured())
                 .isNew(product.getIsNew())
+                .isActive(product.getIsActive())
                 .primaryImage(getPrimaryImage(product))
                 .averageRating(product.getAverageRating())
                 .reviewCount(product.getReviewCount())
                 .totalSold(product.getTotalSold())
                 .inStock(hasStock(product))
                 .availableColors(getAvailableColors(product))
+                .isActive(product.getIsActive())
                 .build();
     }
 

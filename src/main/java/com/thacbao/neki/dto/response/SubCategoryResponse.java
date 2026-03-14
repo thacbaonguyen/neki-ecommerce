@@ -53,7 +53,6 @@ public class SubCategoryResponse {
         if (subCategory.getChildren() != null && !subCategory.getChildren().isEmpty()) {
             response.setChildren(
                     subCategory.getChildren().stream()
-                            .filter(SubCategory::getIsActive)
                             .sorted(Comparator.comparing(SubCategory::getDisplayOrder))
                             .map(SubCategoryResponse::fromWithChildren)
                             .collect(Collectors.toList())

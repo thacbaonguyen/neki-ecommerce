@@ -18,8 +18,10 @@ import java.time.LocalDateTime;
 public class DiscountResponse {
     private Integer id;
     private String name;
+    private String code;
     private String description;
     private String discountType;
+    private Boolean isActive;
     private Integer percent;
     private BigDecimal reduceAmount;
     private Integer usageLimit;
@@ -34,8 +36,10 @@ public class DiscountResponse {
         return DiscountResponse.builder()
                 .id(discount.getId())
                 .name(discount.getName())
+                .code(discount.getCode())
                 .description(discount.getDescription())
                 .discountType(discount.getDiscountType().getValue())
+                .isActive(discount.isActive())
                 .percent(discount.getPercent())
                 .reduceAmount(discount.getReduceAmount())
                 .usageLimit(discount.getUsageLimit())

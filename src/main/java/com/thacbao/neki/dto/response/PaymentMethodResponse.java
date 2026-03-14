@@ -18,6 +18,7 @@ public class PaymentMethodResponse {
     private Integer id;
     private String name;
     private String description;
+    private Boolean isActive;
     private LocalDateTime createAt;
 
     public static PaymentMethodResponse from(PaymentMethod paymentMethod) {
@@ -25,7 +26,8 @@ public class PaymentMethodResponse {
                 .id(paymentMethod.getId())
                 .name(paymentMethod.getName())
                 .description(paymentMethod.getDescription())
-                .createAt(LocalDateTime.now())
+                .isActive(paymentMethod.getIsActive())
+                .createAt(paymentMethod.getCreatedAt())
                 .build();
     }
 }

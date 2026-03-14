@@ -16,6 +16,9 @@ public class DiscountRequest {
     @NotBlank(message = "Ten ma giam gia khong duoc de trong")
     private String name;
 
+    @NotBlank(message = "Ma giam gia khong duoc de trong")
+    private String code;
+
     private Integer percent;
 
     private BigDecimal reduceAmount;
@@ -25,7 +28,9 @@ public class DiscountRequest {
 
     @NotBlank(message = "mo ta khong duoc de trong")
     private String description;
-    private boolean isActive;
+
+    @com.fasterxml.jackson.annotation.JsonProperty("isActive")
+    private boolean active;
 
     private Integer usageLimit;
     private Integer userUsageLimit;
