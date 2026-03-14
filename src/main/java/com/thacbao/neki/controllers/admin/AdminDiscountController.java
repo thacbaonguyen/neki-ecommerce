@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/aip/v1/admin/discount")
+@RequestMapping("/api/v1/admin/discount")
 public class AdminDiscountController {
     private final DiscountService discountService;
 

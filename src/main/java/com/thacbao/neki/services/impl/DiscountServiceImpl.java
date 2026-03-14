@@ -37,6 +37,7 @@ public class DiscountServiceImpl implements DiscountService {
 
         Discount discount = Discount.builder()
                 .name(request.getName())
+                .code(request.getCode())
                 .percent(request.getPercent())
                 .reduceAmount(request.getReduceAmount())
                 .discountType(discountType)
@@ -59,6 +60,7 @@ public class DiscountServiceImpl implements DiscountService {
                 () -> new NotFoundException(MessageKey.DISCOUNT_NOT_FOUND));
 
         discount.setName(request.getName());
+        discount.setCode(request.getCode());
         discount.setPercent(request.getPercent());
         discount.setReduceAmount(request.getReduceAmount());
         discount.setDiscountType(DiscountType.fromValue(request.getDiscountType()));
@@ -95,7 +97,7 @@ public class DiscountServiceImpl implements DiscountService {
 
     @Override
     public Discount validateAndGetDiscount(String code, User user, BigDecimal orderAmount) {
-        Discount discount = discountRepository.findByName(code)
+        Discount discount = discountRepository.findByCode(code)
                 .orElseThrow(() -> new NotFoundException(MessageKey.DISCOUNT_NOT_FOUND));
 
         if (!discount.isActive()) {
