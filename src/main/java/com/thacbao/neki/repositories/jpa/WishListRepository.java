@@ -12,10 +12,10 @@ import java.util.Optional;
 public interface WishListRepository extends JpaRepository<Wishlist, Integer> {
 
     @Query("""
-    select w from Wishlist w
-    join fetch w.products p
-    where w.user.id = :userId
-""")
+                select w from Wishlist w
+                left join w.products p
+                where w.user.id = :userId
+            """)
     Optional<Wishlist> findByUserIdFetchProducts(Integer userId);
 
     boolean existsByUserIdAndProducts_Id(Integer userId, Integer productId);

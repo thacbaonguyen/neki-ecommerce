@@ -22,6 +22,6 @@ public interface CategoryRepository extends JpaRepository<Category, Integer> {
     @Query("SELECT c FROM Category c LEFT JOIN FETCH c.subCategories WHERE c.isActive = true ORDER BY c.displayOrder")
     List<Category> findAllActiveWithSubCategories();
 
-    @Query("SELECT c FROM Category c WHERE c.isActive = true ORDER BY c.displayOrder")
-    List<Category> findAllActiveOrderByDisplayOrder();
+    @Query("SELECT c FROM Category c LEFT JOIN FETCH c.subCategories ORDER BY c.displayOrder")
+    List<Category> findAllOrderByDisplayOrder();
 }

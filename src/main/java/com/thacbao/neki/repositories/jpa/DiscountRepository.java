@@ -13,4 +13,6 @@ public interface DiscountRepository extends JpaRepository<Discount, Integer> {
     List<Discount> findByDiscountType(DiscountType discountType);
 
     Optional<Discount> findByName(String name);
+
+    Optional<Discount> findByCode(String code);
 }

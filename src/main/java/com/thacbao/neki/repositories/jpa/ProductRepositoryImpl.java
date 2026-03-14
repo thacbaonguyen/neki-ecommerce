@@ -92,22 +92,6 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
             if (filter.getMaxPrice() != null) {
                 builder.and(effectivePrice.loe(filter.getMaxPrice()));
             }
-//            if (filter.getMinPrice() != null) {
-//                builder.and(
-//                        product.salePrice.isNull()
-//                                .or(product.salePrice.eq(BigDecimal.ZERO))
-//                                .or(product.salePrice.goe(filter.getMinPrice()))
-//                );
-//            }
-//            if (filter.getMaxPrice() != null) {
-//                builder.and(
-//                        Expressions.cases()
-//                                .when(product.salePrice.isNotNull().and(product.salePrice.gt(BigDecimal.ZERO)))
-//                                .then(product.salePrice)
-//                                .otherwise(product.basePrice)
-//                                .loe(filter.getMaxPrice())
-//                );
-//            }
         }
 
         // colors
@@ -340,6 +324,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                     orders.add(new OrderSpecifier<>(direction, product.viewCount));
                     break;
                 case "averageRating":
+                case "rating":
                     orders.add(new OrderSpecifier<>(direction, product.averageRating));
                     break;
                 case "createdAt":
