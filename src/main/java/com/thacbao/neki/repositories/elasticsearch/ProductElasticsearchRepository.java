@@ -1,14 +1,15 @@
 package com.thacbao.neki.repositories.elasticsearch;
 
+import com.thacbao.neki.documents.ProductDocument;
 import com.thacbao.neki.model.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.annotations.Query;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 
-public interface ProductElasticsearchRepository extends ElasticsearchRepository<Product, Integer> {
+public interface ProductElasticsearchRepository extends ElasticsearchRepository<ProductDocument, Integer> {
 
-    Page<Product> findByNameContainingOrDescriptionContaining(String name, String description, Pageable pageable);
+    Page<ProductDocument> findByNameContainingOrDescriptionContaining(String name, String description, Pageable pageable);
 
     @Query("""
 {
@@ -31,6 +32,6 @@ public interface ProductElasticsearchRepository extends ElasticsearchRepository<
   }
 }
 """)
-    Page<Product> searchProducts(String keyword, Pageable pageable);
+    Page<ProductDocument> searchProducts(String keyword, Pageable pageable);
 
 }
