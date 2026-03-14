@@ -123,8 +123,8 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional(readOnly = true)
     public List<CategoryResponse> getAllCategories() {
-        return categoryRepository.findAllActiveOrderByDisplayOrder().stream()
-                .map(CategoryResponse::from)
+        return categoryRepository.findAllOrderByDisplayOrder().stream()
+                .map(CategoryResponse::fromWithSubCategories)
                 .collect(Collectors.toList());
     }
 
